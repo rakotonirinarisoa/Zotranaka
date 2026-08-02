@@ -1,0 +1,230 @@
+<?xml version="1.0" encoding="utf-8" ?>
+
+<ContentPage
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    x:Class="MoraTuk.Mobile.Pages.ClientHomePage"
+    Title="Commander"
+    BackgroundColor="#F5F7FB">
+
+
+    <ScrollView>
+
+        <VerticalStackLayout
+            Padding="20"
+            Spacing="15">
+
+
+            <!-- Header -->
+
+            <Label
+                Text="🛺 MoraTuk"
+                FontSize="30"
+                FontAttributes="Bold"
+                HorizontalOptions="Center"
+                TextColor="#00A86B"/>
+
+
+            <Label
+                Text="Où voulez-vous aller ?"
+                FontSize="18"
+                FontAttributes="Bold"
+                TextColor="#333"/>
+
+
+            <!-- Départ -->
+
+           <Frame
+                BackgroundColor="White"
+                CornerRadius="15"
+                Padding="10"
+                HasShadow="True">
+
+                <HorizontalStackLayout>
+
+                    <Label
+                        Text="📍"
+                        FontSize="20"/>
+
+                    <Label
+                        x:Name="DepartureLabel"
+                        Text="Recherche de votre position..."
+                        TextColor="#222222"
+                        FontSize="16"
+                        VerticalOptions="Center"/>
+
+                </HorizontalStackLayout>
+
+            </Frame>
+
+
+
+            <!-- Destination -->
+
+            <Frame
+                BackgroundColor="White"
+                CornerRadius="15"
+                Padding="5"
+                HasShadow="True">
+
+
+               <Entry
+                    x:Name="DestinationEntry"
+                    Placeholder="🏁 Destination"
+                    TextColor="#222222"
+                    PlaceholderColor="#888888"
+                    TextChanged="DestinationEntry_TextChanged"/>
+
+            </Frame>
+
+
+
+            <!-- Liste recherche -->
+
+           <CollectionView
+                x:Name="DestinationList"
+                IsVisible="False"
+                HeightRequest="200"
+                BackgroundColor="White"
+                SelectionMode="Single"
+                SelectionChanged="Destination_Selected">
+
+                <CollectionView.ItemTemplate>
+                    <DataTemplate>
+
+                        <Border
+                            Stroke="#DDDDDD"
+                            StrokeThickness="1"
+                            BackgroundColor="White"
+                            Padding="12">
+
+                            <Label
+                                Text="{Binding Name}"
+                                FontSize="16"
+                                TextColor="#222222"/>
+
+                        </Border>
+
+                    </DataTemplate>
+                </CollectionView.ItemTemplate>
+
+            </CollectionView>
+
+
+
+            <!-- Type course -->
+
+            <Label
+                Text="Type de course"
+                FontAttributes="Bold"
+                TextColor="#333"/>
+
+
+            <Frame
+                BackgroundColor="White"
+                CornerRadius="15"
+                Padding="5"
+                HasShadow="True">
+
+
+                <Picker
+                x:Name="RideTypePicker"
+                Title="Choisir le type"
+                TextColor="#222222"
+                TitleColor="#888888">
+
+
+                    <Picker.Items>
+
+                        <x:String>
+                            Tuk-Tuk partagé
+                        </x:String>
+
+                        <x:String>
+                            Tuk-Tuk complet
+                        </x:String>
+
+                    </Picker.Items>
+
+
+                </Picker>
+
+
+            </Frame>
+
+
+
+            <!-- Prix -->
+
+            <Button
+                Text="💰 Calculer le prix"
+                HeightRequest="50"
+                CornerRadius="25"
+                BackgroundColor="#FFC107"
+                TextColor="White"
+                FontAttributes="Bold"
+                Clicked="CalculatePrice_Clicked"/>
+
+
+
+            <Frame
+                BackgroundColor="White"
+                CornerRadius="15"
+                Padding="15"
+                HasShadow="True">
+
+
+                <Label
+                    x:Name="PriceLabel"
+                    Text="Prix estimé : -"
+                    FontSize="18"
+                    HorizontalOptions="Center"
+                    TextColor="#00A86B"
+                    FontAttributes="Bold"/>
+
+
+            </Frame>
+
+
+
+            <!-- Recherche chauffeur -->
+
+
+            <Button
+                Text="🚕 Rechercher un chauffeur"
+                HeightRequest="55"
+                CornerRadius="25"
+                BackgroundColor="#00A86B"
+                TextColor="White"
+                FontAttributes="Bold"
+                Clicked="SearchDriver_Clicked"/>
+
+
+
+            <!-- Statut -->
+
+            <Frame
+                BackgroundColor="White"
+                CornerRadius="15"
+                Padding="15"
+                HasShadow="True">
+
+
+                <Label
+                    x:Name="StatusLabel"
+                    Text="Statut : en attente"
+                    FontSize="16"
+                    HorizontalOptions="Center"
+                    TextColor="#555"/>
+
+
+            </Frame>
+
+
+        </VerticalStackLayout>
+
+
+    </ScrollView>
+
+
+</ContentPage>

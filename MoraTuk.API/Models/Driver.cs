@@ -1,0 +1,31 @@
+using System.ComponentModel.DataAnnotations;
+
+namespace MoraTuk.API.Models;
+
+public class Driver
+{
+    public int Id { get; set; }
+
+
+    // Relation avec User
+    public int UserId { get; set; }
+
+    public User? User { get; set; }
+
+
+    // Informations Tuk-Tuk
+    public string VehicleNumber { get; set; } = string.Empty;
+
+
+    // Disponibilité
+    public bool IsAvailable { get; set; } = false;
+
+
+    // Position GPS
+    public double Latitude { get; set; }
+
+    public double Longitude { get; set; }
+
+
+    public DateTime LastUpdate { get; set; } = DateTime.UtcNow;
+}

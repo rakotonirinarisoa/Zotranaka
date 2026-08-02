@@ -1,0 +1,128 @@
+<?xml version="1.0" encoding="utf-8" ?>
+
+<ContentPage
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    x:Class="MoraTuk.Mobile.Pages.LoginPage"
+    Title="Connexion"
+    BackgroundColor="#F5F7FB">
+
+
+    <ScrollView>
+
+        <VerticalStackLayout
+            Padding="30"
+            Spacing="20"
+            VerticalOptions="Center">
+
+
+            <!-- Logo -->
+            <Frame
+                HeightRequest="100"
+                WidthRequest="100"
+                CornerRadius="50"
+                BackgroundColor="#00A86B"
+                HorizontalOptions="Center"
+                HasShadow="True">
+
+                <Label
+                    Text="🚕"
+                    FontSize="50"
+                    HorizontalOptions="Center"
+                    VerticalOptions="Center"/>
+
+            </Frame>
+
+
+            <Label
+                Text="ZOTRANAKA"
+                FontSize="32"
+                FontAttributes="Bold"
+                HorizontalOptions="Center"
+                TextColor="#222222"/>
+
+
+            <Label
+                Text="Votre déplacement, notre priorité"
+                FontSize="14"
+                HorizontalOptions="Center"
+                TextColor="#777777"/>
+
+
+
+            <!-- Téléphone -->
+
+            <Frame
+                BackgroundColor="White"
+                CornerRadius="15"
+                Padding="5"
+                HasShadow="True">
+
+
+                <Entry
+                    x:Name="PhoneEntry"
+                    Placeholder="Téléphone"
+                    PlaceholderColor="#999999"
+                    TextColor="#222222"
+                    Keyboard="Telephone"/>
+
+
+            </Frame>
+
+
+
+            <!-- Mot de passe -->
+
+            <Frame
+                BackgroundColor="White"
+                CornerRadius="15"
+                Padding="5"
+                HasShadow="True">
+
+
+                <Entry
+                    x:Name="PasswordEntry"
+                    Placeholder="Mot de passe"
+                    PlaceholderColor="#999999"
+                    TextColor="#222222"
+                    IsPassword="True"/>
+
+
+            </Frame>
+
+
+
+
+            <Button
+                Text="Se connecter"
+                HeightRequest="50"
+                CornerRadius="25"
+                BackgroundColor="#00A86B"
+                TextColor="White"
+                FontAttributes="Bold"
+                Clicked="Login_Clicked"/>
+
+
+
+
+            <Label
+                Text="Créer un compte"
+                HorizontalOptions="Center"
+                TextColor="#00A86B"/>
+
+
+
+
+            <Label
+                x:Name="ResultLabel"
+                TextColor="Red"
+                HorizontalOptions="Center"/>
+
+
+        </VerticalStackLayout>
+
+
+    </ScrollView>
+
+
+</ContentPage>
