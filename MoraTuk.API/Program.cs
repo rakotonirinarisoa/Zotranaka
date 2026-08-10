@@ -25,6 +25,12 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI();
 }
+else
+{
+    // Toujours activer Swagger
+    app.UseSwagger();
+    app.UseSwaggerUI();
+}
 
 
 // Désactivé pour le moment

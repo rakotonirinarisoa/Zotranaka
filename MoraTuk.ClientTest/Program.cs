@@ -1,11 +1,14 @@
 ﻿using Microsoft.AspNetCore.SignalR.Client;
 
 
+// var connection = new HubConnectionBuilder()
+//     .WithUrl("http://localhost:5078/tracking")
+//     .WithAutomaticReconnect()
+//     .Build();
 var connection = new HubConnectionBuilder()
-    .WithUrl("http://localhost:5078/tracking")
+    .WithUrl("https://volunteer-filme-focus-westminster.trycloudflare.com/tracking")
     .WithAutomaticReconnect()
     .Build();
-
 
 // Réception acceptation course
 connection.On<object>("RideAccepted", data =>

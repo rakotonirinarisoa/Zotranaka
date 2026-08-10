@@ -1,5 +1,6 @@
-using MoraTuk.Mobile.Services;
+using MoraTuk.Mobile.Helpers;
 using MoraTuk.Mobile.Models;
+using MoraTuk.Mobile.Services;
 
 namespace MoraTuk.Mobile.Pages;
 
@@ -7,126 +8,165 @@ public partial class LoginPage : ContentPage
 {
     private readonly ApiService _apiService;
     private readonly DriverHubService _driverHubService;
+    private readonly RideService _rideService;
+    private readonly LocationService _locationService;
+    private readonly DistanceService _distanceService;
+    private readonly LocationSearchService _searchService;
 
-
-    public LoginPage(ApiService apiService,DriverHubService driverHubService)
+    public LoginPage(
+        ApiService apiService,
+        DriverHubService driverHubService,
+        RideService rideService,
+        LocationService locationService,
+        DistanceService distanceService,
+        LocationSearchService searchService)
     {
         InitializeComponent();
 
         _apiService = apiService;
         _driverHubService = driverHubService;
+        _rideService = rideService;
+        _locationService = locationService;
+        _distanceService = distanceService;
+        _searchService = searchService;
     }
 
+    // ============================================================
+    // LOGIN
+    // ============================================================
 
-    private async void Login_Clicked(object sender, EventArgs e)
+    private async void Login_Clicked(
+        object sender,
+        EventArgs e)
     {
         try
         {
-            var dto = new LoginDto
-            {
-                Phone = PhoneEntry.Text ?? "",
-                Password = PasswordEntry.Text ?? ""
-            };
+            // ====================================================
+            // VÉRIFICATION URL CENTRALE
+            // ====================================================
 
-
-            var result = await _apiService.LoginAsync(dto);
-
-
-            if (result == null)
+            if (!ApiSettings.IsConfigured)
             {
                 await DisplayAlert(
-                    "Erreur",
-                    "Identifiants incorrects",
+                    "Configuration",
+                    "ApiSettings.BaseUrl n'est pas configuré.",
                     "OK");
 
                 return;
             }
 
+            await DisplayAlert(
+                "API",
+                $"URL utilisée :\n\n{ApiSettings.BaseUrl}",
+                "OK");
+
+            // ====================================================
+            // DONNÉES LOGIN
+            // ====================================================
+
+            var dto = new LoginDto
+            {
+                Phone =
+                    PhoneEntry.Text ?? "",
+
+                Password =
+                    PasswordEntry.Text ?? ""
+            };
+
+            // ====================================================
+            // LOGIN API
+            // ====================================================
+
+            var result =
+                await _apiService.LoginAsync(dto);
+
+            if (result == null)
+            {
+                await DisplayAlert(
+                    "Erreur",
+                    "Identifiants incorrects.",
+                    "OK");
+
+                return;
+            }
+
+            // ====================================================
+            // SAUVEGARDE SESSION
+            // ====================================================
 
             await SecureStorage.SetAsync(
                 "token",
                 result.Token);
 
+            await SecureStorage.SetAsync(
+                "userId",
+                result.User.Id.ToString());
+
+            await SecureStorage.SetAsync(
+                "role",
+                result.User.Role);
 
             await SessionService.SaveSession(
                 result.Token,
                 result.User.Id,
                 result.User.Role);
 
+            // ====================================================
+            // DRIVER
+            // ====================================================
 
-            await SecureStorage.SetAsync(
-                "role",
-                result.User.Role);
+            if (result.User.Role == "Driver")
+            {
+                await DisplayAlert(
+                    "Connexion chauffeur",
+                    $"UserId : {result.User.Id}\n" +
+                    $"Role : {result.User.Role}",
+                    "OK");
 
+                var driverId =
+                    await _apiService.GetDriverIdAsync(
+                        result.User.Id);
 
+                await DisplayAlert(
+                    "Chauffeur",
+                    $"DriverId : {driverId}\n\n" +
+                    $"API :\n{ApiSettings.BaseUrl}",
+                    "OK");
 
-           if(result.User.Role == "Driver")
-                {
-                    var driverId = await _apiService
-                        .GetDriverIdAsync(result.User.Id);
+                Application.Current!.MainPage =
+                    new NavigationPage(
+                        new DriverHomePage(
+                            _driverHubService,
+                            driverId));
+            }
 
+            // ====================================================
+            // CLIENT
+            // ====================================================
 
-                    await DisplayAlert(
-                        "ID Chauffeur",
-                        $"DriverId : {driverId}",
-                        "OK");
-
-
-                    // Application.Current.MainPage =
-                    //     new NavigationPage(
-                    //         new DriverHomePage(
-                    //             new DriverHubService(),
-                    //             driverId));
-                     driverId = await _apiService.GetDriverIdAsync(result.User.Id);
-
-                    Application.Current.MainPage =
-                        new NavigationPage(
-                            new DriverHomePage(
-                                new DriverHubService(),
-                                driverId));
-                }
             else
             {
-                var httpClient = new HttpClient
-                {
-                    BaseAddress = new Uri(
-                        "http://192.168.1.106:5078/")
-                };
-
-
-                var rideService = new RideService(
-                    httpClient);
-
-
-                var locationService =
-                    new LocationService(httpClient);
-
-
-                var distanceService =
-                    new DistanceService();
-
-
-                var searchService =
-                    new LocationSearchService(httpClient);
-
-
+                await DisplayAlert(
+                    "Connexion client",
+                    $"UserId : {result.User.Id}\n" +
+                    $"Role : {result.User.Role}\n\n" +
+                    $"API :\n{ApiSettings.BaseUrl}",
+                    "OK");
 
                 var clientPage =
                     new ClientHomePage(
-                        rideService,
-                        locationService,
-                        distanceService,
-                        searchService,
+                        _rideService,
+                        _locationService,
+                        _distanceService,
+                        _searchService,
                         _apiService);
 
-
-
-                Application.Current.MainPage =
-                    new NavigationPage(clientPage);
+                Application.Current!.MainPage =
+                    new NavigationPage(
+                        clientPage);
             }
-
         }
-        catch(Exception ex)
+        catch (Exception ex)
         {
             await DisplayAlert(
                 "Erreur complète",

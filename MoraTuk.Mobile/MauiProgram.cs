@@ -13,23 +13,23 @@ public static class MauiProgram
             .UseMauiApp<App>()
             .ConfigureFonts(fonts =>
             {
-                fonts.AddFont("OpenSans-Regular.ttf", "OpenSansRegular");
-                fonts.AddFont("OpenSans-Semibold.ttf", "OpenSansSemibold");
+                fonts.AddFont(
+                    "OpenSans-Regular.ttf",
+                    "OpenSansRegular");
+
+                fonts.AddFont(
+                    "OpenSans-Semibold.ttf",
+                    "OpenSansSemibold");
             });
 
+        builder.Services.AddSingleton<ApiService>();
+        builder.Services.AddSingleton<ConfigService>();
+        builder.Services.AddSingleton<LocationSearchService>();
+        builder.Services.AddSingleton<DriverHubService>();
 
-            // Connexion API MoraTuk
-            var httpClient = new HttpClient
-            {
-                BaseAddress = new Uri("http://192.168.1.106:5078/")
-            };
-
-            builder.Services.AddSingleton(httpClient);
-
-            builder.Services.AddSingleton<ApiService>();
-            builder.Services.AddSingleton<LocationSearchService>();
-            builder.Services.AddSingleton<DriverHubService>();
-
+        builder.Services.AddSingleton<RideService>();
+        builder.Services.AddSingleton<LocationService>();
+        builder.Services.AddSingleton<DistanceService>();
 
 #if DEBUG
         builder.Logging.AddDebug();

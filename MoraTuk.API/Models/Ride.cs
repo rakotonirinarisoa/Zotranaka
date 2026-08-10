@@ -19,11 +19,14 @@ public class Ride
     public double PickupLatitude { get; set; }
 
     public double PickupLongitude { get; set; }
+    
+    public string Departure { get; set; } = "";
 
     // Destination
     public double DestinationLatitude { get; set; }
 
     public double DestinationLongitude { get; set; }
+    public string Destination { get; set; } = "";
 
     // Prix
     public decimal Price { get; set; }
@@ -38,4 +41,6 @@ public class Ride
 
 
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+   
+
 }

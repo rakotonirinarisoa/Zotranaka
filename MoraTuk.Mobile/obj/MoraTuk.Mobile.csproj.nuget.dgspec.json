@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "D:\\MoraTUK\\MoraTuk.Mobile\\MoraTuk.Mobile.csproj": {}
+    "D:\\MoraTUK\\moratuk.mobile\\MoraTuk.Mobile.csproj": {}
   },
   "projects": {
-    "D:\\MoraTUK\\MoraTuk.Mobile\\MoraTuk.Mobile.csproj": {
+    "D:\\MoraTUK\\moratuk.mobile\\MoraTuk.Mobile.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "D:\\MoraTUK\\MoraTuk.Mobile\\MoraTuk.Mobile.csproj",
+        "projectUniqueName": "D:\\MoraTUK\\moratuk.mobile\\MoraTuk.Mobile.csproj",
         "projectName": "MoraTuk.Mobile",
-        "projectPath": "D:\\MoraTUK\\MoraTuk.Mobile\\MoraTuk.Mobile.csproj",
+        "projectPath": "D:\\MoraTUK\\moratuk.mobile\\MoraTuk.Mobile.csproj",
         "packagesPath": "C:\\Users\\Fiderana\\.nuget\\packages\\",
-        "outputPath": "D:\\MoraTUK\\MoraTuk.Mobile\\obj\\",
+        "outputPath": "D:\\MoraTUK\\moratuk.mobile\\obj\\",
         "projectStyle": "PackageReference",
         "crossTargeting": true,
         "configFilePaths": [

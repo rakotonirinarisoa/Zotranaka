@@ -1,8 +1,8 @@
 {
   "version": 2,
-  "dgSpecHash": "8bGHLqcKHpU=",
+  "dgSpecHash": "Uejx962Ir8U=",
   "success": true,
-  "projectFilePath": "D:\\MoraTUK\\MoraTuk.Mobile\\MoraTuk.Mobile.csproj",
+  "projectFilePath": "D:\\MoraTUK\\moratuk.mobile\\MoraTuk.Mobile.csproj",
   "expectedPackageFiles": [
     "C:\\Users\\Fiderana\\.nuget\\packages\\googlegson\\2.10.1.4\\googlegson.2.10.1.4.nupkg.sha512",
     "C:\\Users\\Fiderana\\.nuget\\packages\\microsoft.aspnetcore.connections.abstractions\\8.0.11\\microsoft.aspnetcore.connections.abstractions.8.0.11.nupkg.sha512",

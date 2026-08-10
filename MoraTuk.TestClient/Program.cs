@@ -1,23 +1,42 @@
-﻿using Microsoft.AspNetCore.SignalR.Client;
+﻿using System.Net.Http.Json;
+using Microsoft.AspNetCore.SignalR.Client;
+using MoraTuk.Mobile.Models;
 
+var configUrl =
+    "https://wind-arrangement-wagon-horses.trycloudflare.com/api/config";
 
-var connection = new HubConnectionBuilder()
-    .WithUrl("http://localhost:5078/tracking")
-    .WithAutomaticReconnect()
-    .Build();
-
-
-// Réception d'une nouvelle course
-connection.On<object>("NewRide", ride =>
-{
-    Console.WriteLine("🚕 Nouvelle course reçue !");
-    Console.WriteLine(ride);
-});
-
-
-// Connexion
 try
 {
+    // Récupération de la configuration
+    using var httpClient = new HttpClient();
+
+    var config = await httpClient
+        .GetFromJsonAsync<AppConfig>(configUrl);
+
+    if (config == null || string.IsNullOrWhiteSpace(config.ApiUrl))
+    {
+        Console.WriteLine("❌ Impossible de récupérer l'URL de l'API.");
+        return;
+    }
+
+    var apiUrl = config.ApiUrl.TrimEnd('/');
+
+    Console.WriteLine($"🌐 API : {apiUrl}");
+
+    // Connexion SignalR
+    var connection = new HubConnectionBuilder()
+        .WithUrl($"{apiUrl}/tracking")
+        .WithAutomaticReconnect()
+        .Build();
+
+    // Réception d'une nouvelle course
+    connection.On("NewRide", ride =>
+    {
+        Console.WriteLine("🚕 Nouvelle course reçue !");
+        Console.WriteLine(ride);
+    });
+
+    // Connexion
     await connection.StartAsync();
 
     Console.WriteLine("✅ Connecté au serveur SignalR");
@@ -29,6 +48,7 @@ try
     );
 
     Console.WriteLine("🚕 Chauffeur enregistré");
+
     while (true)
     {
         await connection.InvokeAsync(
@@ -43,12 +63,8 @@ try
 
         await Task.Delay(5000);
     }
-
-    Console.WriteLine("En attente des courses...");
-
-    Console.ReadLine();
 }
-catch(Exception ex)
+catch (Exception ex)
 {
-    Console.WriteLine(ex.Message);
+    Console.WriteLine($"❌ Erreur : {ex.Message}");
 }

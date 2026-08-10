@@ -1,4 +1,0 @@
-D:\MoraTUK\MoraTuk.Mobile\bin\Release\net8.0-android\publish\com.companyname.moratuk.mobile-Signed.aab
-D:\MoraTUK\MoraTuk.Mobile\bin\Release\net8.0-android\publish\com.companyname.moratuk.mobile.aab
-D:\MoraTUK\MoraTuk.Mobile\bin\Release\net8.0-android\publish\com.companyname.moratuk.mobile-Signed.apk
-D:\MoraTUK\MoraTuk.Mobile\bin\Release\net8.0-android\publish\_Microsoft.Android.Resource.Designer.dll

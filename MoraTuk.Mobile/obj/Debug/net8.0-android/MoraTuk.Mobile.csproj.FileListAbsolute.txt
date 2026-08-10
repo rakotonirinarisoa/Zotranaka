@@ -26,6 +26,11 @@ D:\MoraTUK\MoraTuk.Mobile\obj\Debug\net8.0-android\mauisplash.stamp
 D:\MoraTUK\MoraTuk.Mobile\obj\Debug\net8.0-android\mauifont.stamp
 D:\MoraTUK\MoraTuk.Mobile\obj\Debug\net8.0-android\resizetizer\f\OpenSans-Regular.ttf
 D:\MoraTUK\MoraTuk.Mobile\obj\Debug\net8.0-android\resizetizer\f\OpenSans-Semibold.ttf
+D:\MoraTUK\MoraTuk.Mobile\obj\Debug\net8.0-android\resizetizer\r\drawable-xxxhdpi\dotnet_bot.png
+D:\MoraTUK\MoraTuk.Mobile\obj\Debug\net8.0-android\resizetizer\r\drawable-xxhdpi\dotnet_bot.png
+D:\MoraTUK\MoraTuk.Mobile\obj\Debug\net8.0-android\resizetizer\r\drawable-xhdpi\dotnet_bot.png
+D:\MoraTUK\MoraTuk.Mobile\obj\Debug\net8.0-android\resizetizer\r\drawable-hdpi\dotnet_bot.png
+D:\MoraTUK\MoraTuk.Mobile\obj\Debug\net8.0-android\resizetizer\r\drawable-mdpi\dotnet_bot.png
 D:\MoraTUK\MoraTuk.Mobile\obj\Debug\net8.0-android\resizetizer\r\mipmap-xxxhdpi\appicon_round.png
 D:\MoraTUK\MoraTuk.Mobile\obj\Debug\net8.0-android\resizetizer\r\mipmap-xxhdpi\appicon_round.png
 D:\MoraTUK\MoraTuk.Mobile\obj\Debug\net8.0-android\resizetizer\r\mipmap-xhdpi\appicon_round.png
@@ -48,11 +53,6 @@ D:\MoraTUK\MoraTuk.Mobile\obj\Debug\net8.0-android\resizetizer\r\mipmap-xxhdpi\a
 D:\MoraTUK\MoraTuk.Mobile\obj\Debug\net8.0-android\resizetizer\r\mipmap-xhdpi\appicon_background.png
 D:\MoraTUK\MoraTuk.Mobile\obj\Debug\net8.0-android\resizetizer\r\mipmap-hdpi\appicon_background.png
 D:\MoraTUK\MoraTuk.Mobile\obj\Debug\net8.0-android\resizetizer\r\mipmap-mdpi\appicon_background.png
-D:\MoraTUK\MoraTuk.Mobile\obj\Debug\net8.0-android\resizetizer\r\drawable-xxxhdpi\dotnet_bot.png
-D:\MoraTUK\MoraTuk.Mobile\obj\Debug\net8.0-android\resizetizer\r\drawable-xxhdpi\dotnet_bot.png
-D:\MoraTUK\MoraTuk.Mobile\obj\Debug\net8.0-android\resizetizer\r\drawable-xhdpi\dotnet_bot.png
-D:\MoraTUK\MoraTuk.Mobile\obj\Debug\net8.0-android\resizetizer\r\drawable-hdpi\dotnet_bot.png
-D:\MoraTUK\MoraTuk.Mobile\obj\Debug\net8.0-android\resizetizer\r\drawable-mdpi\dotnet_bot.png
 D:\MoraTUK\MoraTuk.Mobile\obj\Debug\net8.0-android\resizetizer\r\drawable\zotranaka_logo.png
 D:\MoraTUK\MoraTuk.Mobile\obj\Debug\net8.0-android\mauiimage.stamp
 D:\MoraTUK\MoraTuk.Mobile\obj\Debug\net8.0-android\mauiimage.outputs
@@ -122,6 +122,7 @@ D:\MoraTUK\MoraTuk.Mobile\obj\Debug\net8.0-android\MoraTuk.Mobile.GeneratedMSBui
 D:\MoraTUK\MoraTuk.Mobile\obj\Debug\net8.0-android\MoraTuk.Mobile.AssemblyInfoInputs.cache
 D:\MoraTUK\MoraTuk.Mobile\obj\Debug\net8.0-android\MoraTuk.Mobile.AssemblyInfo.cs
 D:\MoraTUK\MoraTuk.Mobile\obj\Debug\net8.0-android\MoraTuk.Mobile.csproj.CoreCompileInputs.cache
+D:\MoraTUK\MoraTuk.Mobile\obj\Debug\net8.0-android\MoraTuk.Mobile.sourcelink.json
 D:\MoraTUK\MoraTuk.Mobile\obj\Debug\net8.0-android\XamlC.stamp
 D:\MoraTUK\MoraTuk.Mobile\obj\Debug\net8.0-android\MoraTuk.Mobile.dll
 D:\MoraTUK\MoraTuk.Mobile\obj\Debug\net8.0-android\MoraTuk.Mobile.pdb
@@ -134,6 +135,8 @@ D:\MoraTUK\MoraTuk.Mobile\obj\Debug\net8.0-android\android\bin\com.companyname.m
 D:\MoraTUK\MoraTuk.Mobile\obj\Debug\net8.0-android\res\values\colors.xml
 D:\MoraTUK\MoraTuk.Mobile\obj\Debug\net8.0-android\uploadflags.txt
 D:\MoraTUK\MoraTuk.Mobile\obj\Debug\net8.0-android\resolvedassemblies.hash
+D:\MoraTUK\MoraTuk.Mobile\obj\Debug\net8.0-android\android\assets\arm64-v8a\System.Private.CoreLib.dll
+D:\MoraTUK\MoraTuk.Mobile\obj\Debug\net8.0-android\android\assets\armeabi-v7a\System.Private.CoreLib.dll
 D:\MoraTUK\MoraTuk.Mobile\obj\Debug\net8.0-android\android\assets\ar\Microsoft.Maui.Controls.resources.dll
 D:\MoraTUK\MoraTuk.Mobile\obj\Debug\net8.0-android\android\assets\ca\Microsoft.Maui.Controls.resources.dll
 D:\MoraTUK\MoraTuk.Mobile\obj\Debug\net8.0-android\android\assets\cs\Microsoft.Maui.Controls.resources.dll
@@ -289,7 +292,6 @@ D:\MoraTUK\MoraTuk.Mobile\obj\Debug\net8.0-android\android\assets\System.Net.Web
 D:\MoraTUK\MoraTuk.Mobile\obj\Debug\net8.0-android\android\assets\System.Numerics.dll
 D:\MoraTUK\MoraTuk.Mobile\obj\Debug\net8.0-android\android\assets\System.Numerics.Vectors.dll
 D:\MoraTUK\MoraTuk.Mobile\obj\Debug\net8.0-android\android\assets\System.ObjectModel.dll
-D:\MoraTUK\MoraTuk.Mobile\obj\Debug\net8.0-android\android\assets\System.Private.CoreLib.dll
 D:\MoraTUK\MoraTuk.Mobile\obj\Debug\net8.0-android\android\assets\System.Private.DataContractSerialization.dll
 D:\MoraTUK\MoraTuk.Mobile\obj\Debug\net8.0-android\android\assets\System.Private.Uri.dll
 D:\MoraTUK\MoraTuk.Mobile\obj\Debug\net8.0-android\android\assets\System.Private.Xml.dll
@@ -374,6 +376,8 @@ D:\MoraTUK\MoraTuk.Mobile\obj\Debug\net8.0-android\android\assets\tr\Microsoft.M
 D:\MoraTUK\MoraTuk.Mobile\obj\Debug\net8.0-android\android\assets\uk\Microsoft.Maui.Controls.resources.dll
 D:\MoraTUK\MoraTuk.Mobile\obj\Debug\net8.0-android\android\assets\vi\Microsoft.Maui.Controls.resources.dll
 D:\MoraTUK\MoraTuk.Mobile\obj\Debug\net8.0-android\android\assets\WindowsBase.dll
+D:\MoraTUK\MoraTuk.Mobile\obj\Debug\net8.0-android\android\assets\x86\System.Private.CoreLib.dll
+D:\MoraTUK\MoraTuk.Mobile\obj\Debug\net8.0-android\android\assets\x86_64\System.Private.CoreLib.dll
 D:\MoraTUK\MoraTuk.Mobile\obj\Debug\net8.0-android\android\assets\Xamarin.Android.Glide.Annotations.dll
 D:\MoraTUK\MoraTuk.Mobile\obj\Debug\net8.0-android\android\assets\Xamarin.Android.Glide.DiskLruCache.dll
 D:\MoraTUK\MoraTuk.Mobile\obj\Debug\net8.0-android\android\assets\Xamarin.Android.Glide.dll
@@ -1053,3 +1057,4 @@ D:\MoraTUK\MoraTuk.Mobile\obj\Debug\net8.0-android\stamp\_ConvertResourcesCases.
 D:\MoraTUK\MoraTuk.Mobile\obj\Debug\net8.0-android\stamp\_GenerateJavaStubs.stamp
 D:\MoraTUK\MoraTuk.Mobile\obj\Debug\net8.0-android\stamp\_GeneratePackageManagerJava.stamp
 D:\MoraTUK\MoraTuk.Mobile\obj\Debug\net8.0-android\stamp\_ResolveLibraryProjectImports.stamp
+D:\MoraTUK\moratuk.mobile\obj\Debug\net8.0-android\android\assets\System.Private.CoreLib.dll

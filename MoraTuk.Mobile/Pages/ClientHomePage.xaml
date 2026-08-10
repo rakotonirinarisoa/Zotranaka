@@ -3,17 +3,13 @@
 <ContentPage
     xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
     xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
-    x:Class="MoraTuk.Mobile.Pages.ClientHomePage"
-    Title="Commander"
-    BackgroundColor="#F5F7FB">
-
+    x:Class="MoraTuk.Mobile.Pages.ClientHomePage">
 
     <ScrollView>
 
         <VerticalStackLayout
             Padding="20"
             Spacing="15">
-
 
             <!-- Header -->
 
@@ -24,17 +20,15 @@
                 HorizontalOptions="Center"
                 TextColor="#00A86B"/>
 
-
             <Label
                 Text="Où voulez-vous aller ?"
                 FontSize="18"
                 FontAttributes="Bold"
                 TextColor="#333"/>
 
-
             <!-- Départ -->
 
-           <Frame
+            <Frame
                 BackgroundColor="White"
                 CornerRadius="15"
                 Padding="10"
@@ -57,8 +51,6 @@
 
             </Frame>
 
-
-
             <!-- Destination -->
 
             <Frame
@@ -67,8 +59,7 @@
                 Padding="5"
                 HasShadow="True">
 
-
-               <Entry
+                <Entry
                     x:Name="DestinationEntry"
                     Placeholder="🏁 Destination"
                     TextColor="#222222"
@@ -77,11 +68,9 @@
 
             </Frame>
 
-
-
             <!-- Liste recherche -->
 
-           <CollectionView
+            <CollectionView
                 x:Name="DestinationList"
                 IsVisible="False"
                 HeightRequest="200"
@@ -90,6 +79,7 @@
                 SelectionChanged="Destination_Selected">
 
                 <CollectionView.ItemTemplate>
+
                     <DataTemplate>
 
                         <Border
@@ -106,11 +96,10 @@
                         </Border>
 
                     </DataTemplate>
+
                 </CollectionView.ItemTemplate>
 
             </CollectionView>
-
-
 
             <!-- Type course -->
 
@@ -119,40 +108,28 @@
                 FontAttributes="Bold"
                 TextColor="#333"/>
 
-
             <Frame
                 BackgroundColor="White"
                 CornerRadius="15"
                 Padding="5"
                 HasShadow="True">
 
-
                 <Picker
-                x:Name="RideTypePicker"
-                Title="Choisir le type"
-                TextColor="#222222"
-                TitleColor="#888888">
-
+                    x:Name="RideTypePicker"
+                    Title="Choisir le type"
+                    TextColor="#222222"
+                    TitleColor="#888888">
 
                     <Picker.Items>
 
-                        <x:String>
-                            Tuk-Tuk partagé
-                        </x:String>
-
-                        <x:String>
-                            Tuk-Tuk complet
-                        </x:String>
+                        <x:String>Tuk-Tuk partagé</x:String>
+                        <x:String>Tuk-Tuk complet</x:String>
 
                     </Picker.Items>
 
-
                 </Picker>
 
-
             </Frame>
-
-
 
             <!-- Prix -->
 
@@ -165,14 +142,11 @@
                 FontAttributes="Bold"
                 Clicked="CalculatePrice_Clicked"/>
 
-
-
             <Frame
                 BackgroundColor="White"
                 CornerRadius="15"
                 Padding="15"
                 HasShadow="True">
-
 
                 <Label
                     x:Name="PriceLabel"
@@ -182,13 +156,9 @@
                     TextColor="#00A86B"
                     FontAttributes="Bold"/>
 
-
             </Frame>
 
-
-
             <!-- Recherche chauffeur -->
-
 
             <Button
                 Text="🚕 Rechercher un chauffeur"
@@ -199,8 +169,6 @@
                 FontAttributes="Bold"
                 Clicked="SearchDriver_Clicked"/>
 
-
-
             <!-- Statut -->
 
             <Frame
@@ -209,7 +177,6 @@
                 Padding="15"
                 HasShadow="True">
 
-
                 <Label
                     x:Name="StatusLabel"
                     Text="Statut : en attente"
@@ -217,14 +184,10 @@
                     HorizontalOptions="Center"
                     TextColor="#555"/>
 
-
             </Frame>
-
 
         </VerticalStackLayout>
 
-
     </ScrollView>
-
 
 </ContentPage>

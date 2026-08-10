@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("MoraTuk.Mobile")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0+bf2fdd3c5840f39c6be8dc47657988706db80ff2")]
 [assembly: System.Reflection.AssemblyProductAttribute("MoraTuk.Mobile")]
 [assembly: System.Reflection.AssemblyTitleAttribute("MoraTuk.Mobile")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

@@ -134,6 +134,7 @@ D:\MoraTUK\MoraTuk.API\obj\Debug\net8.0\MoraTuk.API.AssemblyInfo.cs
 D:\MoraTUK\MoraTuk.API\obj\Debug\net8.0\MoraTuk.API.csproj.CoreCompileInputs.cache
 D:\MoraTUK\MoraTuk.API\obj\Debug\net8.0\MoraTuk.API.MvcApplicationPartsAssemblyInfo.cs
 D:\MoraTUK\MoraTuk.API\obj\Debug\net8.0\MoraTuk.API.MvcApplicationPartsAssemblyInfo.cache
+D:\MoraTUK\MoraTuk.API\obj\Debug\net8.0\MoraTuk.API.sourcelink.json
 D:\MoraTUK\MoraTuk.API\obj\Debug\net8.0\staticwebassets.build.json
 D:\MoraTUK\MoraTuk.API\obj\Debug\net8.0\staticwebassets.development.json
 D:\MoraTUK\MoraTuk.API\obj\Debug\net8.0\staticwebassets\msbuild.MoraTuk.API.Microsoft.AspNetCore.StaticWebAssets.props
