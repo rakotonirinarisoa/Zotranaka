@@ -408,35 +408,198 @@ namespace MoraTuk.API.Controllers
         // GET /api/payment/mvola/status/{serverCorrelationId}
         // ============================================================
 
-        [HttpGet("status/{serverCorrelationId}")]
+       [HttpGet("status/{serverCorrelationId}")]
         public async Task<IActionResult> GetStatus(
             string serverCorrelationId)
         {
             try
             {
-                if (string.IsNullOrWhiteSpace(
-                        serverCorrelationId))
+                if (string.IsNullOrWhiteSpace(serverCorrelationId))
                 {
                     return BadRequest(new
                     {
                         success = false,
-                        message =
-                            "serverCorrelationId est obligatoire."
+                        message = "serverCorrelationId est obligatoire."
                     });
                 }
+
+                // ========================================================
+                // 1. APPEL MVOLA
+                // ========================================================
 
                 var result =
                     await _mvolaService.GetPaymentStatusAsync(
                         serverCorrelationId);
 
+                Console.WriteLine();
+                Console.WriteLine(
+                    "========== UPDATE PAYMENT STATUS ==========");
+
+                Console.WriteLine(
+                    $"ServerCorrelationId : {serverCorrelationId}");
+
+                Console.WriteLine(
+                    $"MVola Response      : {result}");
+
+                // ========================================================
+                // 2. LIRE LA RÉPONSE MVOLA
+                // ========================================================
+
+                using var json =
+                    System.Text.Json.JsonDocument.Parse(result);
+
+                var root =
+                    json.RootElement;
+
+                string? mvolaStatus = null;
+                string? transactionReference = null;
+
+                if (root.TryGetProperty(
+                        "status",
+                        out var statusProperty))
+                {
+                    mvolaStatus =
+                        statusProperty.GetString();
+                }
+
+                if (root.TryGetProperty(
+                        "objectReference",
+                        out var objectReferenceProperty))
+                {
+                    transactionReference =
+                        objectReferenceProperty.GetString();
+                }
+
+                // ========================================================
+                // 3. CONVERTIR LE STATUT
+                // ========================================================
+
+                string paymentStatus;
+
+                if (string.Equals(
+                        mvolaStatus,
+                        "completed",
+                        StringComparison.OrdinalIgnoreCase))
+                {
+                    paymentStatus = "Completed";
+                }
+                else if (string.Equals(
+                        mvolaStatus,
+                        "failed",
+                        StringComparison.OrdinalIgnoreCase))
+                {
+                    paymentStatus = "Failed";
+                }
+                else
+                {
+                    paymentStatus = "Pending";
+                }
+
+                Console.WriteLine(
+                    $"MVola Status       : {mvolaStatus}");
+
+                Console.WriteLine(
+                    $"Payment Status     : {paymentStatus}");
+
+                // ========================================================
+                // 4. RECHERCHER LE PAYMENT
+                // ========================================================
+
+                var payment =
+                    await _context.Payments
+                        .FirstOrDefaultAsync(
+                            x =>
+                                x.ServerCorrelationId ==
+                                serverCorrelationId);
+
+                if (payment == null)
+                {
+                    return NotFound(new
+                    {
+                        success = false,
+                        message =
+                            "Aucun paiement trouvé avec ce serverCorrelationId.",
+
+                        serverCorrelationId
+                    });
+                }
+
+                // ========================================================
+                // 5. METTRE À JOUR LE PAYMENT
+                // ========================================================
+
+                payment.Status =
+                    paymentStatus;
+
+                payment.UpdatedAt =
+                    DateTime.UtcNow;
+
+                if (!string.IsNullOrWhiteSpace(
+                        transactionReference))
+                {
+                    payment.TransactionReference =
+                        transactionReference;
+                }
+
+                await _context.SaveChangesAsync();
+
+                Console.WriteLine(
+                    $"PaymentId          : {payment.Id}");
+
+                Console.WriteLine(
+                    $"Status enregistré   : {payment.Status}");
+
+                Console.WriteLine(
+                    "============================================");
+
+                // ========================================================
+                // 6. RÉPONSE
+                // ========================================================
+
                 return Ok(new
                 {
                     success = true,
-                    data = result
+
+                    message =
+                        "Statut du paiement mis à jour.",
+
+                    payment = new
+                    {
+                        id = payment.Id,
+
+                        rideId =
+                            payment.RideId,
+
+                        amount =
+                            payment.Amount,
+
+                        debitMsisdn =
+                            payment.DebitMsisdn,
+
+                        creditMsisdn =
+                            payment.CreditMsisdn,
+
+                        serverCorrelationId =
+                            payment.ServerCorrelationId,
+
+                        transactionReference =
+                            payment.TransactionReference,
+
+                        status =
+                            payment.Status,
+
+                        updatedAt =
+                            payment.UpdatedAt
+                    },
+
+                    mvola = result
                 });
             }
             catch (Exception ex)
             {
+                Console.WriteLine(
+                    $"ERREUR UPDATE PAYMENT STATUS : {ex}");
+
                 return StatusCode(
                     StatusCodes.Status500InternalServerError,
                     new
