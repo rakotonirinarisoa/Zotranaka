@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "D:\\MoraTUK\\MoraTuk.API\\MoraTuk.API.csproj": {}
+    "D:\\MoraTUK\\moratuk.api\\MoraTuk.API.csproj": {}
   },
   "projects": {
-    "D:\\MoraTUK\\MoraTuk.API\\MoraTuk.API.csproj": {
+    "D:\\MoraTUK\\moratuk.api\\MoraTuk.API.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "D:\\MoraTUK\\MoraTuk.API\\MoraTuk.API.csproj",
+        "projectUniqueName": "D:\\MoraTUK\\moratuk.api\\MoraTuk.API.csproj",
         "projectName": "MoraTuk.API",
-        "projectPath": "D:\\MoraTUK\\MoraTuk.API\\MoraTuk.API.csproj",
+        "projectPath": "D:\\MoraTUK\\moratuk.api\\MoraTuk.API.csproj",
         "packagesPath": "C:\\Users\\Fiderana\\.nuget\\packages\\",
-        "outputPath": "D:\\MoraTUK\\MoraTuk.API\\obj\\",
+        "outputPath": "D:\\MoraTUK\\moratuk.api\\obj\\",
         "projectStyle": "PackageReference",
         "configFilePaths": [
           "C:\\Users\\Fiderana\\AppData\\Roaming\\NuGet\\NuGet.Config"

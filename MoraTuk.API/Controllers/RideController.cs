@@ -15,6 +15,8 @@ public class RideController : ControllerBase
     private readonly AppDbContext _context;
     private readonly DistanceService _distanceService;
     private readonly IHubContext<TrackingHub> _hub;
+    private readonly IMvolaService _mvolaService;
+    private readonly IConfiguration _configuration;
 
     private const decimal PRICE_PER_KM = 1500m;
     private const decimal MIN_RIDE_PRICE = 2100m;
@@ -22,11 +24,15 @@ public class RideController : ControllerBase
     public RideController(
         AppDbContext context,
         DistanceService distanceService,
-        IHubContext<TrackingHub> hub)
+        IHubContext<TrackingHub> hub,
+        IMvolaService mvolaService,
+        IConfiguration configuration)
     {
         _context = context;
         _distanceService = distanceService;
         _hub = hub;
+        _mvolaService = mvolaService;
+        _configuration = configuration;
     }
 
     // ============================================================
@@ -94,30 +100,56 @@ public class RideController : ControllerBase
 
     [HttpPost("create")]
     public async Task<IActionResult> CreateRide(
-        [FromBody] Ride ride)
+        [FromBody] CreateRideRequest request)
     {
         try
         {
-            if (ride == null)
+            if (request == null)
             {
-                return BadRequest(
-                    "Les données de la course sont obligatoires.");
+                return BadRequest(new
+                {
+                    success = false,
+                    message = "Les données de la course sont obligatoires."
+                });
             }
 
+            if (string.IsNullOrWhiteSpace(request.DebitMsisdn))
+            {
+                return BadRequest(new
+                {
+                    success = false,
+                    message = "Le numéro MVola du client est obligatoire."
+                });
+            }
+
+            // ========================================================
+            // CLIENT
+            // ========================================================
+
             var client = await _context.Users
-                .FirstOrDefaultAsync(
-                    x => x.Id == ride.ClientId);
+                .FirstOrDefaultAsync(x => x.Id == request.ClientId);
 
             if (client == null)
-                return BadRequest("Client introuvable.");
+            {
+                return BadRequest(new
+                {
+                    success = false,
+                    message = "Client introuvable."
+                });
+            }
 
             if (client.Role != "Client")
-                return BadRequest(
-                    "Cet utilisateur n'est pas un client.");
+            {
+                return BadRequest(new
+                {
+                    success = false,
+                    message = "Cet utilisateur n'est pas un client."
+                });
+            }
 
-            // ----------------------------------------------------
+            // ========================================================
             // CHAUFFEURS DISPONIBLES
-            // ----------------------------------------------------
+            // ========================================================
 
             var drivers = await _context.Drivers
                 .Include(d => d.User)
@@ -129,13 +161,16 @@ public class RideController : ControllerBase
 
             if (!drivers.Any())
             {
-                return BadRequest(
-                    "Aucun chauffeur disponible.");
+                return BadRequest(new
+                {
+                    success = false,
+                    message = "Aucun chauffeur disponible."
+                });
             }
 
-            // ----------------------------------------------------
-            // DERNIÈRE POSITION DES CHAUFFEURS
-            // ----------------------------------------------------
+            // ========================================================
+            // DERNIÈRES POSITIONS DES CHAUFFEURS
+            // ========================================================
 
             var driverLocations = await _context.DriverLocations
                 .GroupBy(x => x.DriverId)
@@ -154,8 +189,8 @@ public class RideController : ControllerBase
                         Driver = driver,
 
                         Distance = _distanceService.Calculate(
-                            ride.PickupLatitude,
-                            ride.PickupLongitude,
+                            request.PickupLatitude,
+                            request.PickupLongitude,
                             location.Latitude,
                             location.Longitude)
                     })
@@ -164,8 +199,11 @@ public class RideController : ControllerBase
 
             if (nearestDriver == null)
             {
-                return BadRequest(
-                    "Aucun chauffeur avec une position connue.");
+                return BadRequest(new
+                {
+                    success = false,
+                    message = "Aucun chauffeur avec une position connue."
+                });
             }
 
             Console.WriteLine(
@@ -174,38 +212,35 @@ public class RideController : ControllerBase
 
             if (nearestDriver.Distance > 5)
             {
-                return BadRequest(
-                    "Aucun chauffeur disponible dans un rayon de 5 km.");
+                return BadRequest(new
+                {
+                    success = false,
+                    message = "Aucun chauffeur disponible dans un rayon de 5 km."
+                });
             }
 
-            // ----------------------------------------------------
-            // AFFECTATION
-            // ----------------------------------------------------
-
-            ride.DriverId = nearestDriver.Driver.Id;
-
-            ride.MaxPassengers = 4;
-            ride.CurrentPassengers = 1;
-
-            ride.RideType ??= "Shared";
-
-            ride.Status = "WaitingDriver";
-
-            ride.CreatedAt = DateTime.UtcNow;
-
-            // ----------------------------------------------------
-            // DISTANCE COURSE
-            // ----------------------------------------------------
+            // ========================================================
+            // DISTANCE DE LA COURSE
+            // ========================================================
 
             var distance = _distanceService.Calculate(
-                ride.PickupLatitude,
-                ride.PickupLongitude,
-                ride.DestinationLatitude,
-                ride.DestinationLongitude);
+                request.PickupLatitude,
+                request.PickupLongitude,
+                request.DestinationLatitude,
+                request.DestinationLongitude);
 
-            // ----------------------------------------------------
-            // PRIX
-            // ----------------------------------------------------
+            if (distance <= 0)
+            {
+                return BadRequest(new
+                {
+                    success = false,
+                    message = "La distance calculée est invalide."
+                });
+            }
+
+            // ========================================================
+            // CALCUL DU PRIX
+            // ========================================================
 
             decimal price = Math.Ceiling(
                 (decimal)distance * PRICE_PER_KM / 100m
@@ -215,14 +250,44 @@ public class RideController : ControllerBase
                 price = MIN_RIDE_PRICE;
 
             if (string.Equals(
-                ride.RideType,
+                request.RideType,
                 "Private",
                 StringComparison.OrdinalIgnoreCase))
             {
                 price *= 4;
             }
 
-            ride.Price = price;
+            // ========================================================
+            // CREATION RIDE
+            // ========================================================
+
+            var ride = new Ride
+            {
+                ClientId = request.ClientId,
+
+                DriverId = nearestDriver.Driver.Id,
+
+                PickupLatitude = request.PickupLatitude,
+                PickupLongitude = request.PickupLongitude,
+                Departure = request.Departure,
+
+                DestinationLatitude = request.DestinationLatitude,
+                DestinationLongitude = request.DestinationLongitude,
+                Destination = request.Destination,
+
+                Price = price,
+
+                RideType = string.IsNullOrWhiteSpace(request.RideType)
+                    ? "Shared"
+                    : request.RideType,
+
+                MaxPassengers = 4,
+                CurrentPassengers = 1,
+
+                Status = "WaitingDriver",
+
+                CreatedAt = DateTime.UtcNow
+            };
 
             _context.Rides.Add(ride);
 
@@ -231,9 +296,137 @@ public class RideController : ControllerBase
             Console.WriteLine(
                 $"Course créée : {ride.Id}");
 
-            // ----------------------------------------------------
+            // ========================================================
+            // CREATION PAYMENT
+            // ========================================================
+
+            var merchantNumber =
+                _configuration["Mvola:MerchantNumber"];
+
+            if (string.IsNullOrWhiteSpace(merchantNumber))
+            {
+                return StatusCode(500, new
+                {
+                    success = false,
+                    message = "Mvola:MerchantNumber est manquant."
+                });
+            }
+
+            var payment = new Payment
+            {
+                RideId = ride.Id,
+
+                Amount = ride.Price,
+
+                Currency = "Ar",
+
+                PaymentMethod = "MVola",
+
+                Status = "Pending",
+
+                DebitMsisdn = request.DebitMsisdn,
+
+                CreditMsisdn = merchantNumber,
+
+                Description =
+                    $"Paiement MoraTUK - Course #{ride.Id}",
+
+                CreatedAt = DateTime.UtcNow
+            };
+
+            _context.Payments.Add(payment);
+
+            await _context.SaveChangesAsync();
+
+            Console.WriteLine(
+                $"Payment créé : {payment.Id}");
+
+            // ========================================================
+            // APPEL MVOLA
+            // ========================================================
+
+            var transactionReference =
+                $"MORATUK-{DateTime.UtcNow:yyyyMMddHHmmss}-{ride.Id}";
+
+            var mvolaRequest = new MvolaPaymentRequest
+            {
+                Amount = ride.Price.ToString("0"),
+
+                Currency = "Ar",
+
+                DescriptionText =
+                    $"Paiement MoraTUK - Course #{ride.Id}",
+
+                RequestingOrganisationTransactionReference =
+                    transactionReference,
+
+                RequestDate =
+                    DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ss.fffZ"),
+
+                DebitParty = new List<MvolaParty>
+                {
+                    new MvolaParty
+                    {
+                        Key = "msisdn",
+                        Value = request.DebitMsisdn
+                    }
+                },
+
+                CreditParty = new List<MvolaParty>
+                {
+                    new MvolaParty
+                    {
+                        Key = "msisdn",
+                        Value = merchantNumber
+                    }
+                },
+
+                Metadata = new List<MvolaMetadata>
+                {
+                    new MvolaMetadata
+                    {
+                        Key = "partnerName",
+                        Value = "MoraTUK"
+                    }
+                }
+            };
+
+            var mvolaResult =
+                await _mvolaService.MerchantPayAsync(
+                    mvolaRequest);
+
+            Console.WriteLine(
+                $"MVola result : {mvolaResult}");
+
+            // ========================================================
+            // RECUPERER SERVER CORRELATION ID
+            // ========================================================
+
+            using var mvolaJson =
+                System.Text.Json.JsonDocument.Parse(
+                    mvolaResult);
+
+            if (mvolaJson.RootElement.TryGetProperty(
+                "serverCorrelationId",
+                out var correlationProperty))
+            {
+                payment.ServerCorrelationId =
+                    correlationProperty.GetString();
+            }
+
+            payment.TransactionReference =
+                transactionReference;
+
+            payment.Status = "Pending";
+
+            payment.UpdatedAt =
+                DateTime.UtcNow;
+
+            await _context.SaveChangesAsync();
+
+            // ========================================================
             // NOTIFICATION SIGNALR
-            // ----------------------------------------------------
+            // ========================================================
 
             await _hub.Clients
                 .Group($"driver-{nearestDriver.Driver.Id}")
@@ -255,9 +448,11 @@ public class RideController : ControllerBase
                         DestinationLongitude =
                             ride.DestinationLongitude,
 
-                        Price = ride.Price,
+                        Price =
+                            ride.Price,
 
-                        RideType = ride.RideType,
+                        RideType =
+                            ride.RideType,
 
                         Passengers =
                             ride.CurrentPassengers,
@@ -272,33 +467,56 @@ public class RideController : ControllerBase
                             ride.Destination
                     });
 
+            // ========================================================
+            // REPONSE
+            // ========================================================
+
             return Ok(new
             {
-                Message = "Course créée",
+                success = true,
 
-                RideId = ride.Id,
+                message = "Course créée et paiement MVola envoyé.",
 
-                DriverId =
+                rideId = ride.Id,
+
+                paymentId = payment.Id,
+
+                driverId =
                     nearestDriver.Driver.Id,
 
-                Driver =
+                driver =
                     nearestDriver.Driver.User?.FullName,
 
-                DistanceKm =
+                distanceKm =
                     Math.Round(
                         nearestDriver.Distance,
                         2),
 
-                Price = ride.Price,
+                rideDistanceKm =
+                    Math.Round(
+                        distance,
+                        2),
 
-                RideType =
+                price =
+                    ride.Price,
+
+                rideType =
                     ride.RideType,
 
-                Passengers =
+                passengers =
                     $"{ride.CurrentPassengers}/{ride.MaxPassengers}",
 
-                Status =
-                    ride.Status
+                rideStatus =
+                    ride.Status,
+
+                paymentStatus =
+                    payment.Status,
+
+                serverCorrelationId =
+                    payment.ServerCorrelationId,
+
+                transactionReference =
+                    payment.TransactionReference
             });
         }
         catch (Exception ex)
@@ -310,11 +528,16 @@ public class RideController : ControllerBase
                 500,
                 new
                 {
+                    success = false,
+
                     message =
                         "Erreur lors de la création de la course.",
 
                     error =
-                        ex.Message
+                        ex.Message,
+
+                    innerException =
+                        ex.InnerException?.Message
                 });
         }
     }

@@ -19,6 +19,14 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<Ride>()
             .Property(x => x.Price)
             .HasPrecision(10, 2);
+        modelBuilder.Entity<Payment>()
+            .Property(p => p.Amount)
+            .HasPrecision(18, 2);
+
+        modelBuilder.Entity<Payment>()
+            .HasOne(p => p.Ride)
+            .WithOne()
+            .HasForeignKey<Payment>(p => p.RideId);
     }
 
 
@@ -27,7 +35,12 @@ public class AppDbContext : DbContext
     public DbSet<Driver> Drivers { get; set; }
 
     public DbSet<Ride> Rides { get; set; }
+
     public DbSet<Location> Locations { get; set; }
+
     public DbSet<UserLocation> UserLocations { get; set; }
+
     public DbSet<DriverLocation> DriverLocations { get; set; }
+
+    public DbSet<Payment> Payments { get; set; }
 }

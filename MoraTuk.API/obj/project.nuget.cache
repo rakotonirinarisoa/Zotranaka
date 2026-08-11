@@ -1,8 +1,8 @@
 {
   "version": 2,
-  "dgSpecHash": "KPeUH6TaTbs=",
+  "dgSpecHash": "SKBBldr+77c=",
   "success": true,
-  "projectFilePath": "D:\\MoraTUK\\MoraTuk.API\\MoraTuk.API.csproj",
+  "projectFilePath": "D:\\MoraTUK\\moratuk.api\\MoraTuk.API.csproj",
   "expectedPackageFiles": [
     "C:\\Users\\Fiderana\\.nuget\\packages\\azure.core\\1.38.0\\azure.core.1.38.0.nupkg.sha512",
     "C:\\Users\\Fiderana\\.nuget\\packages\\azure.identity\\1.11.4\\azure.identity.1.11.4.nupkg.sha512",
