@@ -28,4 +28,7 @@ public class Driver
 
 
     public DateTime LastUpdate { get; set; } = DateTime.UtcNow;
+
+    // Numéro MVola du chauffeur
+    public string? MvolaNumber { get; set; }
 }

@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using MoraTuk.API.Data;
 
@@ -11,9 +12,11 @@ using MoraTuk.API.Data;
 namespace MoraTuk.API.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260812050900_AddDriverEarning")]
+    partial class AddDriverEarning
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -68,9 +71,6 @@ namespace MoraTuk.API.Migrations
                     b.Property<double>("Longitude")
                         .HasColumnType("float");
 
-                    b.Property<string>("MvolaNumber")
-                        .HasColumnType("nvarchar(max)");
-
                     b.Property<int>("UserId")
                         .HasColumnType("int");
 
@@ -107,9 +107,6 @@ namespace MoraTuk.API.Migrations
                     b.Property<int>("DriverId")
                         .HasColumnType("int");
 
-                    b.Property<int?>("DriverPayoutId")
-                        .HasColumnType("int");
-
                     b.Property<decimal>("GrossAmount")
                         .HasPrecision(18, 2)
                         .HasColumnType("decimal(18,2)");
@@ -137,8 +134,6 @@ namespace MoraTuk.API.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("DriverId");
-
-                    b.HasIndex("DriverPayoutId");
 
                     b.HasIndex("PaymentId");
 
@@ -170,65 +165,6 @@ namespace MoraTuk.API.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("DriverLocations");
-                });
-
-            modelBuilder.Entity("MoraTuk.API.Models.DriverPayout", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<decimal>("CommissionAmount")
-                        .HasPrecision(18, 2)
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<decimal>("DriverAmount")
-                        .HasPrecision(18, 2)
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<int>("DriverId")
-                        .HasColumnType("int");
-
-                    b.Property<string>("FailureReason")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<decimal>("GrossAmount")
-                        .HasPrecision(18, 2)
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<DateTime?>("PaidAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<DateTime>("PayoutDate")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("ServerCorrelationId")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("Status")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<int>("TotalRides")
-                        .HasColumnType("int");
-
-                    b.Property<string>("TransactionReference")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<decimal>("WaitingFeeAmount")
-                        .HasPrecision(18, 2)
-                        .HasColumnType("decimal(18,2)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("DriverId");
-
-                    b.ToTable("DriverPayouts");
                 });
 
             modelBuilder.Entity("MoraTuk.API.Models.Payment", b =>
@@ -427,11 +363,6 @@ namespace MoraTuk.API.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.HasOne("MoraTuk.API.Models.DriverPayout", "DriverPayout")
-                        .WithMany("Earnings")
-                        .HasForeignKey("DriverPayoutId")
-                        .OnDelete(DeleteBehavior.SetNull);
-
                     b.HasOne("MoraTuk.API.Models.Payment", "Payment")
                         .WithMany()
                         .HasForeignKey("PaymentId")
@@ -446,22 +377,9 @@ namespace MoraTuk.API.Migrations
 
                     b.Navigation("Driver");
 
-                    b.Navigation("DriverPayout");
-
                     b.Navigation("Payment");
 
                     b.Navigation("Ride");
-                });
-
-            modelBuilder.Entity("MoraTuk.API.Models.DriverPayout", b =>
-                {
-                    b.HasOne("MoraTuk.API.Models.Driver", "Driver")
-                        .WithMany()
-                        .HasForeignKey("DriverId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("Driver");
                 });
 
             modelBuilder.Entity("MoraTuk.API.Models.Payment", b =>
@@ -490,11 +408,6 @@ namespace MoraTuk.API.Migrations
                     b.Navigation("Client");
 
                     b.Navigation("Driver");
-                });
-
-            modelBuilder.Entity("MoraTuk.API.Models.DriverPayout", b =>
-                {
-                    b.Navigation("Earnings");
                 });
 #pragma warning restore 612, 618
         }

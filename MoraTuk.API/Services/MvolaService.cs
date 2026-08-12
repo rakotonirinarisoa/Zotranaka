@@ -188,9 +188,22 @@ namespace MoraTuk.API.Services
                             .JsonIgnoreCondition.WhenWritingNull
                 };
 
+            var mvolaRequest = new
+            {
+                request.Amount,
+                request.Currency,
+                request.DescriptionText,
+                request.RequestingOrganisationTransactionReference,
+                request.RequestDate,
+                request.OriginalTransactionReference,
+                request.DebitParty,
+                request.CreditParty,
+                request.Metadata
+            };
+
             var json =
                 JsonSerializer.Serialize(
-                    request,
+                    mvolaRequest,
                     jsonOptions);
 
             Console.WriteLine();

@@ -4,6 +4,7 @@ using MoraTuk.API.Data;
 using MoraTuk.API.Models;
 using MoraTuk.API.Services;
 
+
 namespace MoraTuk.API.Controllers
 {
     [ApiController]
@@ -12,13 +13,16 @@ namespace MoraTuk.API.Controllers
     {
         private readonly IMvolaService _mvolaService;
         private readonly AppDbContext _context;
+        private readonly IConfiguration _configuration;
 
         public MvolaController(
             IMvolaService mvolaService,
-            AppDbContext context)
+            AppDbContext context,
+            IConfiguration configuration)
         {
             _mvolaService = mvolaService;
             _context = context;
+            _configuration = configuration;
         }
 
         // ============================================================
@@ -539,6 +543,179 @@ namespace MoraTuk.API.Controllers
                 {
                     payment.TransactionReference =
                         transactionReference;
+                }
+
+                // ========================================================
+                // 5 BIS. CRÉER LE DRIVER EARNING SI PAIEMENT COMPLETED
+                // ========================================================
+
+                DriverEarning? driverEarning = null;
+
+                if (paymentStatus == "Completed")
+                {
+                    // ----------------------------------------------------
+                    // Vérifier si le earning existe déjà
+                    // ----------------------------------------------------
+
+                    driverEarning =
+                        await _context.DriverEarnings
+                            .FirstOrDefaultAsync(
+                                x => x.PaymentId == payment.Id);
+
+                    // ----------------------------------------------------
+                    // Créer uniquement s'il n'existe pas
+                    // ----------------------------------------------------
+
+                    if (driverEarning == null)
+                    {
+                        var ride =
+                            await _context.Rides
+                                .FirstOrDefaultAsync(
+                                    x => x.Id == payment.RideId);
+
+                        if (ride == null)
+                        {
+                            return NotFound(new
+                            {
+                                success = false,
+                                message = "Course associée au paiement introuvable."
+                            });
+                        }
+
+                        // ------------------------------------------------
+                        // Vérifier le chauffeur
+                        // ------------------------------------------------
+
+                        if (!ride.DriverId.HasValue)
+                        {
+                            return BadRequest(new
+                            {
+                                success = false,
+                                message =
+                                    "Aucun chauffeur n'est affecté à cette course."
+                            });
+                        }
+
+                        // ------------------------------------------------
+                        // Récupérer la configuration
+                        // ------------------------------------------------
+
+                        var commissionPercent =
+                            _configuration
+                                .GetValue<decimal>(
+                                    "MoraTukPayment:CommissionPercent");
+
+                        var waitingFeePerMinute =
+                            _configuration
+                                .GetValue<decimal>(
+                                    "MoraTukPayment:WaitingFeePerMinute");
+
+                        // ------------------------------------------------
+                        // Montant brut
+                        // ------------------------------------------------
+
+                        var grossAmount =
+                            payment.Amount;
+
+                        // ------------------------------------------------
+                        // Commission ZOTRANAKA
+                        // ------------------------------------------------
+
+                        var commissionAmount =
+                            grossAmount *
+                            commissionPercent /
+                            100m;
+
+                        // ------------------------------------------------
+                        // Frais d'attente
+                        //
+                        // Pour l'instant nous n'avons pas encore
+                        // de durée d'attente dans Ride.
+                        // Donc = 0.
+                        // ------------------------------------------------
+
+                        var waitingFeeAmount = 0m;
+
+                        // ------------------------------------------------
+                        // Montant chauffeur
+                        // ------------------------------------------------
+
+                        var driverAmount =
+                            grossAmount -
+                            commissionAmount -
+                            waitingFeeAmount;
+
+                        // ------------------------------------------------
+                        // Sécurité
+                        // ------------------------------------------------
+
+                        if (driverAmount < 0)
+                        {
+                            driverAmount = 0;
+                        }
+
+                        // ------------------------------------------------
+                        // CRÉER DRIVER EARNING
+                        // ------------------------------------------------
+
+                        driverEarning = new DriverEarning
+                        {
+                            RideId = ride.Id,
+
+                            DriverId = ride.DriverId.Value,
+
+                            PaymentId = payment.Id,
+
+                            GrossAmount = grossAmount,
+
+                            CommissionAmount =
+                                commissionAmount,
+
+                            WaitingFeeAmount =
+                                waitingFeeAmount,
+
+                            DriverAmount =
+                                driverAmount,
+
+                            Status = "Pending",
+
+                            CreatedAt = DateTime.UtcNow
+                        };
+
+                        _context.DriverEarnings.Add(
+                            driverEarning);
+
+                        Console.WriteLine();
+                        Console.WriteLine(
+                            "========== DRIVER EARNING ==========");
+
+                        Console.WriteLine(
+                            $"RideId           : {driverEarning.RideId}");
+
+                        Console.WriteLine(
+                            $"DriverId         : {driverEarning.DriverId}");
+
+                        Console.WriteLine(
+                            $"PaymentId        : {driverEarning.PaymentId}");
+
+                        Console.WriteLine(
+                            $"GrossAmount      : {driverEarning.GrossAmount}");
+
+                        Console.WriteLine(
+                            $"Commission       : {driverEarning.CommissionAmount}");
+
+                        Console.WriteLine(
+                            $"WaitingFee       : {driverEarning.WaitingFeeAmount}");
+
+                        Console.WriteLine(
+                            $"DriverAmount     : {driverEarning.DriverAmount}");
+
+                        Console.WriteLine(
+                            $"Status           : {driverEarning.Status}");
+
+                        Console.WriteLine(
+                            "====================================");
+                    }
                 }
 
                 await _context.SaveChangesAsync();
