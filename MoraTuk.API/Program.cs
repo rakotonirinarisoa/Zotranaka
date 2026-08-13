@@ -6,34 +6,62 @@ using MoraTuk.API.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Controllers
+// ============================================================
+// CONTROLLERS
+// ============================================================
+
 builder.Services.AddControllers();
 
-// SignalR
+// ============================================================
+// SIGNALR
+// ============================================================
+
 builder.Services.AddSignalR();
 
-// Swagger
+// ============================================================
+// SWAGGER
+// ============================================================
+
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-// Database
+// ============================================================
+// DATABASE
+// ============================================================
+
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlServer(
         builder.Configuration.GetConnectionString("DefaultConnection")
     ));
 
-// Services
+// ============================================================
+// SERVICES
+// ============================================================
+
 builder.Services.AddScoped<DistanceService>();
 
-// MVola
+// Service de gestion des payouts chauffeurs
+builder.Services.AddScoped<DriverPayoutService>();
+
+// ============================================================
+// MVOLA
+// ============================================================
+
 builder.Services.Configure<MvolaSettings>(
     builder.Configuration.GetSection("Mvola"));
 
 builder.Services.AddHttpClient<IMvolaService, MvolaService>();
 
+// ============================================================
+// APPLICATION
+// ============================================================
+
 var app = builder.Build();
 
-// Swagger
+// ============================================================
+// SWAGGER
+// ============================================================
+
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
@@ -45,15 +73,25 @@ else
     app.UseSwaggerUI();
 }
 
+// ============================================================
+// HTTPS
+// ============================================================
+
 // HTTPS désactivé pour le moment
 // app.UseHttpsRedirection();
 
 app.UseAuthorization();
 
-// Controllers
+// ============================================================
+// CONTROLLERS
+// ============================================================
+
 app.MapControllers();
 
-// SignalR
+// ============================================================
+// SIGNALR
+// ============================================================
+
 app.MapHub<TrackingHub>("/trackingHub");
 
 app.Run();

@@ -28,5 +28,11 @@ public class RideNotification
     public int Passengers { get; set; }
 
     public double DistanceToDriver { get; set; }
+    
+    // ============================================================
+    // STATUT DE LA COURSE
+    // ============================================================
+
+    public string Status { get; set; } = "";
 }
 

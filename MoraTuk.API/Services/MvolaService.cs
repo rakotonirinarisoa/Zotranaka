@@ -584,5 +584,263 @@ namespace MoraTuk.API.Services
 
             return responseContent;
         }
+        // ============================================================
+// TRANSFERT VERS CHAUFFEUR - MODE TEST
+// ============================================================
+
+       // ============================================================
+// TRANSFERT VERS CHAUFFEUR - MVOLA
+// ============================================================
+
+        public async Task<string> TransferToDriverAsync(
+            string driverMvolaNumber,
+            decimal amount,
+            string description,
+            string reference)
+        {
+            if (string.IsNullOrWhiteSpace(driverMvolaNumber))
+                throw new Exception("Numéro MVola du chauffeur obligatoire.");
+
+            if (amount <= 0)
+                throw new Exception(
+                    "Le montant du payout doit être supérieur à 0.");
+
+            if (string.IsNullOrWhiteSpace(reference))
+                throw new Exception(
+                    "La référence du payout est obligatoire.");
+
+            // ========================================================
+            // TOKEN
+            // ========================================================
+
+            var accessToken =
+                await GetAccessTokenAsync();
+
+            var baseUrl =
+                GetBaseUrl();
+
+            var userAccountIdentifier =
+                GetUserAccountIdentifier();
+
+            var partnerName =
+                GetPartnerName();
+
+            // ========================================================
+            // NORMALISER LE NUMÉRO CHAUFFEUR
+            // ========================================================
+
+            driverMvolaNumber =
+                driverMvolaNumber.Trim();
+
+            if (driverMvolaNumber.StartsWith("msisdn;"))
+            {
+                driverMvolaNumber =
+                    driverMvolaNumber.Substring("msisdn;".Length);
+            }
+
+            // ========================================================
+            // CORRELATION ID
+            // ========================================================
+
+            var correlationId =
+                Guid.NewGuid().ToString();
+
+            // ========================================================
+            // DATE
+            // ========================================================
+
+            var requestDate =
+                DateTime.UtcNow.ToString(
+                    "yyyy-MM-ddTHH:mm:ss");
+
+            // ========================================================
+            // BODY MVOLA
+            // ========================================================
+
+            var mvolaRequest = new
+            {
+                amount = amount.ToString("0.00"),
+                currency = "Ar",
+
+                descriptionText = description,
+
+                requestingOrganisationTransactionReference =
+                    reference,
+
+                requestDate = requestDate,
+
+                debitParty = new[]
+                {
+                    new
+                    {
+                        key = "msisdn",
+                        value = GetMerchantNumber()
+                    }
+                },
+
+                creditParty = new[]
+                {
+                    new
+                    {
+                        key = "msisdn",
+                        value = driverMvolaNumber
+                    }
+                },
+
+                metadata = new[]
+                {
+                    new
+                    {
+                        key = "partnerName",
+                        value = partnerName
+                    }
+                }
+            };
+
+            var jsonOptions =
+                new JsonSerializerOptions
+                {
+                    PropertyNamingPolicy =
+                        JsonNamingPolicy.CamelCase
+                };
+
+            var json =
+                JsonSerializer.Serialize(
+                    mvolaRequest,
+                    jsonOptions);
+
+            // ========================================================
+            // URL
+            // ========================================================
+
+            var transferUrl =
+                $"{baseUrl}/";
+
+            // ========================================================
+            // REQUEST
+            // ========================================================
+
+            using var transferRequest =
+                new HttpRequestMessage(
+                    HttpMethod.Post,
+                    transferUrl);
+
+            // ========================================================
+            // HEADERS
+            // ========================================================
+
+            transferRequest.Headers.Authorization =
+                new AuthenticationHeaderValue(
+                    "Bearer",
+                    accessToken);
+
+            transferRequest.Headers.Add(
+                "Version",
+                "1.0");
+
+            transferRequest.Headers.Add(
+                "X-CorrelationID",
+                correlationId);
+
+            transferRequest.Headers.Add(
+                "UserLanguage",
+                "FR");
+
+            transferRequest.Headers.Add(
+                "UserAccountIdentifier",
+                userAccountIdentifier);
+
+            transferRequest.Headers.Add(
+                "partnerName",
+                partnerName);
+
+            transferRequest.Headers.Add(
+                "Cache-Control",
+                "no-cache");
+
+            transferRequest.Headers.Accept.Add(
+                new MediaTypeWithQualityHeaderValue(
+                    "application/json"));
+
+            transferRequest.Content =
+                new StringContent(
+                    json,
+                    Encoding.UTF8,
+                    "application/json");
+
+            // ========================================================
+            // DEBUG
+            // ========================================================
+
+            Console.WriteLine();
+            Console.WriteLine(
+                "========== MVOLA DRIVER PAYOUT ==========");
+
+            Console.WriteLine(
+                $"URL                  : {transferUrl}");
+
+            Console.WriteLine(
+                $"Version              : 1.0");
+
+            Console.WriteLine(
+                $"X-CorrelationID      : {correlationId}");
+
+            Console.WriteLine(
+                $"UserAccountIdentifier: {userAccountIdentifier}");
+
+            Console.WriteLine(
+                $"Driver MSISDN        : {driverMvolaNumber}");
+
+            Console.WriteLine(
+                $"Amount               : {amount}");
+
+            Console.WriteLine(
+                $"Reference            : {reference}");
+
+            Console.WriteLine(
+                "BODY:");
+
+            Console.WriteLine(json);
+
+            Console.WriteLine(
+                "==========================================");
+
+            // ========================================================
+            // APPEL MVOLA
+            // ========================================================
+
+            var response =
+                await _httpClient.SendAsync(
+                    transferRequest);
+
+            var responseContent =
+                await response.Content.ReadAsStringAsync();
+
+            // ========================================================
+            // RESPONSE
+            // ========================================================
+
+            Console.WriteLine();
+            Console.WriteLine(
+                "========== MVOLA PAYOUT RESPONSE ==========");
+
+            Console.WriteLine(
+                $"HTTP {(int)response.StatusCode} {response.StatusCode}");
+
+            Console.WriteLine(responseContent);
+
+            Console.WriteLine(
+                "============================================");
+
+            if (!response.IsSuccessStatusCode)
+            {
+                throw new Exception(
+                    $"MVola Driver Payout HTTP " +
+                    $"{(int)response.StatusCode}: " +
+                    responseContent);
+            }
+
+            return responseContent;
+        }
     }
 }

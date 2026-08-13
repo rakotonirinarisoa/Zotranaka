@@ -158,6 +158,27 @@
 
             </Frame>
 
+            <!-- Numéro MVola du client -->
+
+            <Label
+                Text="Numéro MVola"
+                FontAttributes="Bold"
+                TextColor="#333"/>
+
+            <Frame
+                BackgroundColor="White"
+                CornerRadius="15"
+                Padding="5"
+                HasShadow="True">
+
+                <Entry
+                    x:Name="MvolaNumberEntry"
+                    Placeholder="Ex : 0329208949"
+                    Keyboard="Telephone"
+                    MaxLength="10"
+                    TextColor="#222222"
+                    PlaceholderColor="#888888"/>
+            </Frame>
             <!-- Recherche chauffeur -->
 
             <Button

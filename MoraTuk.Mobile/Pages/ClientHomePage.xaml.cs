@@ -14,9 +14,6 @@ public partial class ClientHomePage : ContentPage
     private double destinationLatitude = 0;
     private double destinationLongitude = 0;
 
-    private List<LocationDto> _places = new();
-
-    private CancellationTokenSource? _searchToken;
     private CancellationTokenSource? _searchCancellation;
 
     private int _clientId;
@@ -35,45 +32,50 @@ public partial class ClientHomePage : ContentPage
         _distanceService = distanceService;
         _searchService = searchService;
         _apiService = apiService;
-
-        //LoadSession();
     }
 
+    // ============================================================
+    // SESSION CLIENT
+    // ============================================================
 
-private async Task LoadSessionAsync()
-{
-    try
+    private async Task LoadSessionAsync()
     {
-        var id = await SecureStorage.GetAsync("userId");
-
-        if (string.IsNullOrWhiteSpace(id))
+        try
         {
-            throw new Exception("Aucun userId trouvé dans la session.");
-        }
+            var id = await SecureStorage.GetAsync("userId");
 
-        if (!int.TryParse(id, out var clientId))
+            if (string.IsNullOrWhiteSpace(id))
+            {
+                throw new Exception(
+                    "Aucun userId trouvé dans la session.");
+            }
+
+            if (!int.TryParse(id, out var clientId))
+            {
+                throw new Exception(
+                    $"userId invalide : {id}");
+            }
+
+            _clientId = clientId;
+
+            Console.WriteLine(
+                $"CLIENT SESSION CHARGÉE : {_clientId}");
+        }
+        catch (Exception ex)
         {
-            throw new Exception($"userId invalide : {id}");
+            Console.WriteLine(
+                $"ERREUR SESSION CLIENT : {ex}");
+
+            await DisplayAlert(
+                "Erreur session",
+                ex.Message,
+                "OK");
         }
-
-        _clientId = clientId;
-
-        Console.WriteLine(
-            $"CLIENT SESSION CHARGÉE : {_clientId}");
     }
-    catch (Exception ex)
-    {
-        Console.WriteLine(
-            $"ERREUR SESSION CLIENT : {ex}");
 
-        await DisplayAlert(
-            "Erreur session",
-            ex.Message,
-            "OK");
-    }
-}
-
-
+    // ============================================================
+    // CALCUL DU PRIX
+    // ============================================================
 
     private async void CalculatePrice_Clicked(
         object sender,
@@ -91,6 +93,17 @@ private async Task LoadSessionAsync()
                 return;
             }
 
+            if (destinationLatitude == 0 ||
+                destinationLongitude == 0)
+            {
+                await DisplayAlert(
+                    "Destination",
+                    "Veuillez sélectionner une destination.",
+                    "OK");
+
+                return;
+            }
+
             var location =
                 await _locationService.GetLastLocationAsync(
                     _clientId);
@@ -100,17 +113,6 @@ private async Task LoadSessionAsync()
                 await DisplayAlert(
                     "GPS",
                     "Position client introuvable.",
-                    "OK");
-
-                return;
-            }
-
-            if (destinationLatitude == 0 ||
-                destinationLongitude == 0)
-            {
-                await DisplayAlert(
-                    "Destination",
-                    "Veuillez sélectionner une destination.",
                     "OK");
 
                 return;
@@ -171,6 +173,9 @@ private async Task LoadSessionAsync()
         }
         catch (Exception ex)
         {
+            Console.WriteLine(
+                $"ERREUR CALCUL PRIX : {ex}");
+
             await DisplayAlert(
                 "Erreur calcul",
                 ex.ToString(),
@@ -178,12 +183,20 @@ private async Task LoadSessionAsync()
         }
     }
 
+    // ============================================================
+    // RECHERCHE CHAUFFEUR + CREATION COURSE + MVOLA
+    // ============================================================
+
     private async void SearchDriver_Clicked(
         object sender,
         EventArgs e)
     {
         try
         {
+            // ----------------------------------------------------
+            // CLIENT
+            // ----------------------------------------------------
+
             if (_clientId <= 0)
             {
                 await DisplayAlert(
@@ -193,6 +206,10 @@ private async Task LoadSessionAsync()
 
                 return;
             }
+
+            // ----------------------------------------------------
+            // DESTINATION
+            // ----------------------------------------------------
 
             if (destinationLatitude == 0 ||
                 destinationLongitude == 0)
@@ -205,16 +222,47 @@ private async Task LoadSessionAsync()
                 return;
             }
 
-            /*
-             * IMPORTANT :
-             * On utilise la dernière position enregistrée.
-             * On ne redemande PAS le GPS ici.
-             */
-             await UpdateClientLocationAsync();
-            var location = await Geolocation.GetLocationAsync(
-                new GeolocationRequest(
-                    GeolocationAccuracy.High,
-                    TimeSpan.FromSeconds(10)));
+            // ----------------------------------------------------
+            // NUMERO MVOLA CLIENT
+            // ----------------------------------------------------
+
+            var mvolaNumber =
+                MvolaNumberEntry.Text?.Trim();
+
+            if (string.IsNullOrWhiteSpace(mvolaNumber))
+            {
+                await DisplayAlert(
+                    "MVola",
+                    "Veuillez saisir votre numéro MVola.",
+                    "OK");
+
+                return;
+            }
+
+            // Nettoyage
+            mvolaNumber =
+                mvolaNumber
+                    .Replace(" ", "")
+                    .Replace("-", "");
+
+            Console.WriteLine(
+                "====================================");
+
+            Console.WriteLine(
+                $"MVOLA CLIENT : {mvolaNumber}");
+
+            Console.WriteLine(
+                "====================================");
+
+            // ----------------------------------------------------
+            // GPS ACTUEL
+            // ----------------------------------------------------
+
+            StatusLabel.Text =
+                "📍 Récupération de votre position...";
+
+            var location =
+                await _locationService.GetCurrentLocation();
 
             if (location == null)
             {
@@ -227,8 +275,30 @@ private async Task LoadSessionAsync()
             }
 
             Console.WriteLine(
-                $"GPS CLIENT AU MOMENT DE LA RÉSERVATION : " +
+                $"GPS CLIENT : " +
                 $"{location.Latitude}, {location.Longitude}");
+
+            // ----------------------------------------------------
+            // SAUVEGARDE POSITION CLIENT
+            // ----------------------------------------------------
+
+            await _locationService.SaveUserLocationAsync(
+                _clientId,
+                location.Latitude,
+                location.Longitude);
+
+            // ----------------------------------------------------
+            // TYPE DE COURSE
+            // ----------------------------------------------------
+
+            var rideType =
+                RideTypePicker.SelectedIndex == 1
+                    ? "Private"
+                    : "Shared";
+
+            // ----------------------------------------------------
+            // DTO CREATION COURSE
+            // ----------------------------------------------------
 
             var dto = new CreateRideDto
             {
@@ -259,21 +329,67 @@ private async Task LoadSessionAsync()
                     destinationLongitude,
 
                 RideType =
-                    RideTypePicker.SelectedIndex == 1
-                        ? "Private"
-                        : "Shared",
+                    rideType,
 
-                Status = "WaitingDriver"
+                Status =
+                    "WaitingDriver",
+
+                // IMPORTANT :
+                // NUMERO MVOLA PERSONNEL DU CLIENT
+                DebitMsisdn =
+                    mvolaNumber
             };
 
+            // ----------------------------------------------------
+            // DEBUG
+            // ----------------------------------------------------
+
+            Console.WriteLine(
+                "========== CREATE RIDE ==========");
+
+            Console.WriteLine(
+                $"ClientId       : {dto.ClientId}");
+
+            Console.WriteLine(
+                $"DebitMsisdn    : {dto.DebitMsisdn}");
+
+            Console.WriteLine(
+                $"Pickup         : " +
+                $"{dto.PickupLatitude}, " +
+                $"{dto.PickupLongitude}");
+
+            Console.WriteLine(
+                $"Destination    : " +
+                $"{dto.DestinationLatitude}, " +
+                $"{dto.DestinationLongitude}");
+
+            Console.WriteLine(
+                $"Departure      : {dto.Departure}");
+
+            Console.WriteLine(
+                $"Destination    : {dto.Destination}");
+
+            Console.WriteLine(
+                $"RideType       : {dto.RideType}");
+
+            Console.WriteLine(
+                "=================================");
+
+            // ----------------------------------------------------
+            // CREATION COURSE
+            // ----------------------------------------------------
+
             StatusLabel.Text =
-                "Recherche d'un chauffeur...";
+                "🚕 Recherche d'un chauffeur...";
 
             var result =
                 await _rideService.CreateRideAsync(dto);
 
             if (result == null)
             {
+                StatusLabel.Text =
+                    "❌ Impossible de créer la course.";
+
                 await DisplayAlert(
                     "Erreur",
                     "Impossible de créer la course.",
@@ -282,10 +398,14 @@ private async Task LoadSessionAsync()
                 return;
             }
 
+            // ----------------------------------------------------
+            // RESULTAT
+            // ----------------------------------------------------
+
             StatusLabel.Text =
                 string.IsNullOrWhiteSpace(result.Driver)
-                    ? "Recherche d'un chauffeur..."
-                    : $"Chauffeur trouvé : {result.Driver}";
+                    ? "🚕 Recherche d'un chauffeur..."
+                    : $"🚕 Chauffeur trouvé : {result.Driver}";
 
             await DisplayAlert(
                 "Course créée",
@@ -295,6 +415,9 @@ private async Task LoadSessionAsync()
         }
         catch (Exception ex)
         {
+            Console.WriteLine(
+                $"ERREUR RECHERCHE CHAUFFEUR : {ex}");
+
             await DisplayAlert(
                 "Erreur recherche chauffeur",
                 ex.ToString(),
@@ -302,13 +425,21 @@ private async Task LoadSessionAsync()
         }
     }
 
-    private async void Destination_TextChanged(
+    // ============================================================
+    // RECHERCHE DESTINATION
+    // ============================================================
+
+    private async void DestinationEntry_TextChanged(
         object sender,
         TextChangedEventArgs e)
     {
         try
         {
-            if (string.IsNullOrWhiteSpace(e.NewTextValue))
+            var text =
+                e.NewTextValue?.Trim();
+
+            if (string.IsNullOrWhiteSpace(text) ||
+                text.Length < 2)
             {
                 DestinationList.IsVisible = false;
                 return;
@@ -319,13 +450,25 @@ private async Task LoadSessionAsync()
             _searchCancellation =
                 new CancellationTokenSource();
 
+            var token =
+                _searchCancellation.Token;
+
             await Task.Delay(
                 500,
-                _searchCancellation.Token);
+                token);
+
+            if (token.IsCancellationRequested)
+                return;
+
+            Console.WriteLine(
+                $"RECHERCHE DESTINATION : {text}");
 
             var places =
                 await _searchService.SearchAsync(
-                    e.NewTextValue);
+                    text + " Toamasina");
+
+            if (token.IsCancellationRequested)
+                return;
 
             if (places == null ||
                 places.Count == 0)
@@ -334,21 +477,30 @@ private async Task LoadSessionAsync()
                 return;
             }
 
-            DestinationList.ItemsSource = null;
-            DestinationList.ItemsSource = places;
-            DestinationList.IsVisible = true;
+            DestinationList.ItemsSource =
+                places;
+
+            DestinationList.IsVisible =
+                true;
         }
         catch (TaskCanceledException)
         {
         }
         catch (Exception ex)
         {
+            Console.WriteLine(
+                $"ERREUR RECHERCHE DESTINATION : {ex}");
+
             await DisplayAlert(
                 "Erreur recherche",
                 ex.Message,
                 "OK");
         }
     }
+
+    // ============================================================
+    // SELECTION DESTINATION
+    // ============================================================
 
     private async void Destination_Selected(
         object sender,
@@ -368,17 +520,20 @@ private async Task LoadSessionAsync()
             DestinationEntry.Text =
                 place.Name;
 
-            StatusLabel.Text =
-                $"Destination : {place.Name}";
-
             destinationLatitude =
                 place.Latitude;
 
             destinationLongitude =
                 place.Longitude;
 
-            DestinationList.IsVisible = false;
-            DestinationList.SelectedItem = null;
+            StatusLabel.Text =
+                $"Destination : {place.Name}";
+
+            DestinationList.IsVisible =
+                false;
+
+            DestinationList.SelectedItem =
+                null;
 
             await DisplayAlert(
                 "Destination sélectionnée",
@@ -389,12 +544,19 @@ private async Task LoadSessionAsync()
         }
         catch (Exception ex)
         {
+            Console.WriteLine(
+                $"ERREUR SELECTION DESTINATION : {ex}");
+
             await DisplayAlert(
                 "Erreur sélection",
                 ex.ToString(),
                 "OK");
         }
     }
+
+    // ============================================================
+    // RECHERCHE DESTINATION MANUELLE
+    // ============================================================
 
     private async void SearchDestination_Clicked(
         object sender,
@@ -415,7 +577,8 @@ private async Task LoadSessionAsync()
 
             var places =
                 await _searchService.SearchAsync(
-                    DestinationEntry.Text + " Toamasina");
+                    DestinationEntry.Text.Trim() +
+                    " Toamasina");
 
             if (places == null ||
                 places.Count == 0)
@@ -462,6 +625,9 @@ private async Task LoadSessionAsync()
             DestinationEntry.Text =
                 place.Name;
 
+            StatusLabel.Text =
+                $"Destination : {place.Name}";
+
             await DisplayAlert(
                 "Destination sélectionnée",
                 $"{place.Name}\n\n" +
@@ -471,6 +637,9 @@ private async Task LoadSessionAsync()
         }
         catch (Exception ex)
         {
+            Console.WriteLine(
+                $"ERREUR DESTINATION : {ex}");
+
             await DisplayAlert(
                 "Erreur destination",
                 ex.ToString(),
@@ -478,176 +647,153 @@ private async Task LoadSessionAsync()
         }
     }
 
-    private async void DestinationEntry_TextChanged(
-        object sender,
-        TextChangedEventArgs e)
+    // ============================================================
+    // PAGE APPARAIT
+    // ============================================================
+
+    protected override async void OnAppearing()
     {
+        base.OnAppearing();
+
         try
         {
-            if (string.IsNullOrWhiteSpace(
-                e.NewTextValue))
+            // ----------------------------------------------------
+            // SESSION
+            // ----------------------------------------------------
+
+            await LoadSessionAsync();
+
+            if (_clientId <= 0)
             {
-                DestinationList.IsVisible = false;
+                DepartureLabel.Text =
+                    "❌ Client non connecté.";
+
                 return;
             }
 
-            var places =
-                await _searchService.SearchAsync(
-                    e.NewTextValue);
+            Console.WriteLine(
+                $"CLIENT ID : {_clientId}");
 
-            DestinationList.ItemsSource = places;
+            // ----------------------------------------------------
+            // GPS
+            // ----------------------------------------------------
 
-            DestinationList.IsVisible =
-                places != null &&
-                places.Count > 0;
+            DepartureLabel.Text =
+                "📍 Récupération du GPS...";
+
+            var location =
+                await _locationService.GetCurrentLocation();
+
+            if (location == null)
+            {
+                DepartureLabel.Text =
+                    "❌ Position GPS indisponible.";
+
+                await DisplayAlert(
+                    "GPS",
+                    "Impossible de récupérer votre position GPS.",
+                    "OK");
+
+                return;
+            }
+
+            Console.WriteLine(
+                $"GPS CLIENT : " +
+                $"{location.Latitude}, " +
+                $"{location.Longitude}");
+
+            // ----------------------------------------------------
+            // SAUVEGARDE POSITION
+            // ----------------------------------------------------
+
+            await _locationService.SaveUserLocationAsync(
+                _clientId,
+                location.Latitude,
+                location.Longitude);
+
+            // ----------------------------------------------------
+            // LIEU LE PLUS PROCHE
+            // ----------------------------------------------------
+
+            var place =
+                await _searchService.GetNearestPlace(
+                    location.Latitude,
+                    location.Longitude);
+
+            if (place != null)
+            {
+                DepartureLabel.Text =
+                    $"📍 {place.Name}";
+            }
+            else
+            {
+                DepartureLabel.Text =
+                    "📍 Position actuelle";
+            }
         }
         catch (Exception ex)
         {
+            Console.WriteLine(
+                $"ERREUR ON APPEARING CLIENT : {ex}");
+
+            DepartureLabel.Text =
+                "❌ Erreur GPS";
+
             await DisplayAlert(
-                "Erreur recherche",
+                "Erreur",
                 ex.ToString(),
                 "OK");
         }
     }
 
-    
-protected override async void OnAppearing()
-{
-    base.OnAppearing();
+    // ============================================================
+    // MISE A JOUR POSITION CLIENT
+    // ============================================================
 
-    try
+    private async Task UpdateClientLocationAsync()
     {
-        // =====================================================
-        // 1. CHARGER LA SESSION AVANT TOUT
-        // =====================================================
-
-        await LoadSessionAsync();
-
-        if (_clientId <= 0)
+        try
         {
-            DepartureLabel.Text =
-                "❌ Client non connecté.";
+            if (_clientId <= 0)
+            {
+                Console.WriteLine(
+                    "GPS CLIENT : ClientId invalide.");
 
-            return;
-        }
+                return;
+            }
 
-        Console.WriteLine(
-            $"CLIENT ID : {_clientId}");
+            Console.WriteLine(
+                $"GPS CLIENT : récupération position " +
+                $"pour UserId {_clientId}...");
 
-        // =====================================================
-        // 2. RÉCUPÉRER LE GPS ACTUEL
-        // =====================================================
+            var location =
+                await _locationService.GetCurrentLocation();
 
-        DepartureLabel.Text =
-            "📍 Récupération du GPS...";
+            if (location == null)
+            {
+                Console.WriteLine(
+                    "GPS CLIENT : position introuvable.");
 
-        var location =
-            await _locationService.GetCurrentLocation();
+                return;
+            }
 
-        if (location == null)
-        {
-            DepartureLabel.Text =
-                "❌ Position GPS indisponible ou imprécise.";
+            Console.WriteLine(
+                $"GPS CLIENT ACTUEL : " +
+                $"{location.Latitude}, " +
+                $"{location.Longitude}");
 
-            await DisplayAlert(
-                "GPS",
-                "Impossible de récupérer votre position GPS.",
-                "OK");
-
-            return;
-        }
-
-        Console.WriteLine(
-            $"GPS CLIENT : " +
-            $"{location.Latitude}, {location.Longitude}");
-
-        // =====================================================
-        // 3. ENREGISTRER LA POSITION DU CLIENT
-        // =====================================================
-
-        await _locationService.SaveUserLocationAsync(
-            _clientId,
-            location.Latitude,
-            location.Longitude);
-
-        Console.WriteLine(
-            $"POSITION CLIENT ENREGISTRÉE : {_clientId}");
-
-        // =====================================================
-        // 4. AFFICHER LE DÉPART
-        // =====================================================
-
-        var place =
-            await _searchService.GetNearestPlace(
+            await _locationService.SaveUserLocationAsync(
+                _clientId,
                 location.Latitude,
                 location.Longitude);
 
-        if (place != null)
-        {
-            DepartureLabel.Text =
-                $"📍 {place.Name}";
+            Console.WriteLine(
+                "GPS CLIENT : position enregistrée.");
         }
-        else
-        {
-            DepartureLabel.Text =
-                "📍 Position actuelle";
-        }
-    }
-    catch (Exception ex)
-    {
-        Console.WriteLine(
-            $"ERREUR ON APPEARING CLIENT : {ex}");
-
-        DepartureLabel.Text =
-            "❌ Erreur GPS";
-
-        await DisplayAlert(
-            "Erreur",
-            ex.ToString(),
-            "OK");
-    }
-}
-
-    private async Task UpdateClientLocationAsync()
-{
-    try
-    {
-        if (_clientId <= 0)
+        catch (Exception ex)
         {
             Console.WriteLine(
-                "GPS CLIENT : ClientId invalide.");
-            return;
+                $"ERREUR UPDATE GPS CLIENT : {ex}");
         }
-
-        Console.WriteLine(
-            $"GPS CLIENT : récupération position actuelle pour UserId {_clientId}...");
-
-        var location =
-            await _locationService.GetCurrentLocation();
-
-        if (location == null)
-        {
-            Console.WriteLine(
-                "GPS CLIENT : position introuvable.");
-            return;
-        }
-
-        Console.WriteLine(
-            $"GPS CLIENT ACTUEL : " +
-            $"{location.Latitude}, {location.Longitude}");
-
-        await _locationService.SaveUserLocationAsync(
-            _clientId,
-            location.Latitude,
-            location.Longitude);
-
-        Console.WriteLine(
-            "GPS CLIENT : position enregistrée.");
     }
-    catch (Exception ex)
-    {
-        Console.WriteLine(
-            $"ERREUR UPDATE GPS CLIENT : {ex}");
-    }
-}
 }

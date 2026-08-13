@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("MoraTuk.API")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Release")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+35eff3ddf937c366eb3d2af716f10a322af09453")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+ed8a621e12ffa677fd59e22277371d4c025584e5")]
 [assembly: System.Reflection.AssemblyProductAttribute("MoraTuk.API")]
 [assembly: System.Reflection.AssemblyTitleAttribute("MoraTuk.API")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

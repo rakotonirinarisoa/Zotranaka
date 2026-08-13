@@ -24,6 +24,7 @@ public class RideService
     private string BaseUrl =>
         ApiSettings.BaseUrl.TrimEnd('/');
 
+
     // ============================================================
     // CRÉER UNE COURSE
     // ============================================================
@@ -90,10 +91,6 @@ public class RideService
                 $"CREATE RIDE RESPONSE : " +
                 responseBody);
 
-            // ====================================================
-            // ERREUR API
-            // ====================================================
-
             if (!response.IsSuccessStatusCode)
             {
                 throw new Exception(
@@ -102,19 +99,11 @@ public class RideService
                     $"Message : {responseBody}");
             }
 
-            // ====================================================
-            // RÉPONSE VIDE
-            // ====================================================
-
             if (string.IsNullOrWhiteSpace(responseBody))
             {
                 throw new Exception(
                     "L'API a retourné une réponse vide.");
             }
-
-            // ====================================================
-            // DÉSÉRIALISATION
-            // ====================================================
 
             var result =
                 JsonSerializer.Deserialize<RideResponse>(
@@ -144,103 +133,188 @@ public class RideService
             throw;
         }
     }
-   public async Task<List<RideNotification>> GetAvailableRidesAsync(
-    int driverId)
-{
-    try
+
+
+    // ============================================================
+    // COURSES ACTIVES DU CHAUFFEUR
+    // ============================================================
+
+    public async Task<List<RideNotification>>
+        GetAvailableRidesAsync(int driverId)
     {
-        if (!ApiSettings.IsConfigured)
+        try
         {
-            throw new Exception(
-                "ApiSettings.BaseUrl n'est pas configuré.");
+            if (!ApiSettings.IsConfigured)
+            {
+                throw new Exception(
+                    "ApiSettings.BaseUrl n'est pas configuré.");
+            }
+
+            var url =
+                $"{BaseUrl}/api/Ride/available/{driverId}";
+
+            Console.WriteLine(
+                $"ACTIVE RIDES URL : {url}");
+
+            var response =
+                await _http.GetAsync(url);
+
+            var content =
+                await response.Content.ReadAsStringAsync();
+
+            Console.WriteLine(
+                $"ACTIVE RIDES STATUS : " +
+                $"{(int)response.StatusCode}");
+
+            Console.WriteLine(
+                $"ACTIVE RIDES RESPONSE : " +
+                content);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                throw new Exception(
+                    $"Erreur API {(int)response.StatusCode} : " +
+                    content);
+            }
+
+            var rides =
+                JsonSerializer.Deserialize<
+                    List<RideNotification>>(
+                        content,
+                        new JsonSerializerOptions
+                        {
+                            PropertyNameCaseInsensitive = true
+                        });
+
+            return rides ??
+                new List<RideNotification>();
         }
-
-        var url =
-            $"{ApiSettings.BaseUrl.TrimEnd('/')}" +
-            $"/api/Ride/available/{driverId}";
-
-        Console.WriteLine(
-            $"AVAILABLE RIDES URL : {url}");
-
-        var response =
-            await _http.GetAsync(url);
-
-        var content =
-            await response.Content.ReadAsStringAsync();
-
-        Console.WriteLine(
-            $"AVAILABLE RIDES STATUS : {(int)response.StatusCode}");
-
-        Console.WriteLine(
-            $"AVAILABLE RIDES RESPONSE : {content}");
-
-        if (!response.IsSuccessStatusCode)
-        {
-            throw new Exception(
-                $"Erreur API {(int)response.StatusCode} : {content}");
-        }
-
-        var rides =
-            JsonSerializer.Deserialize<List<RideNotification>>(
-                content,
-                new JsonSerializerOptions
-                {
-                    PropertyNameCaseInsensitive = true
-                });
-
-        return rides ?? new List<RideNotification>();
-    }
-    catch (Exception ex)
-    {
-        Console.WriteLine(
-            $"ERREUR GetAvailableRidesAsync : {ex}");
-
-        throw;
-    }
-}
-public async Task<bool> AcceptRideAsync(
-    int rideId,
-    int driverId)
-{
-    try
-    {
-        var url =
-            $"{ApiSettings.BaseUrl.TrimEnd('/')}" +
-            $"/api/Ride/{rideId}/accept?driverId={driverId}";
-
-        Console.WriteLine(
-            $"ACCEPT RIDE URL : {url}");
-
-        var response =
-            await _http.PutAsync(
-                url,
-                null);
-
-        var content =
-            await response.Content.ReadAsStringAsync();
-
-        Console.WriteLine(
-            $"ACCEPT RIDE STATUS : {(int)response.StatusCode}");
-
-        Console.WriteLine(
-            $"ACCEPT RIDE RESPONSE : {content}");
-
-        if (!response.IsSuccessStatusCode)
+        catch (Exception ex)
         {
             Console.WriteLine(
-                $"ACCEPT RIDE ERROR : {content}");
+                $"ERREUR GetAvailableRidesAsync : {ex}");
+
+            throw;
+        }
+    }
+
+
+    // ============================================================
+    // ACCEPTER COURSE
+    // ============================================================
+
+    public async Task<bool> AcceptRideAsync(
+        int rideId,
+        int driverId)
+    {
+        try
+        {
+            var url =
+                $"{BaseUrl}/api/Ride/{rideId}" +
+                $"/accept?driverId={driverId}";
+
+            Console.WriteLine(
+                $"ACCEPT RIDE URL : {url}");
+
+            var response =
+                await _http.PutAsync(
+                    url,
+                    null);
+
+            var content =
+                await response.Content
+                    .ReadAsStringAsync();
+
+            Console.WriteLine(
+                $"ACCEPT RIDE STATUS : " +
+                $"{(int)response.StatusCode}");
+
+            Console.WriteLine(
+                $"ACCEPT RIDE RESPONSE : " +
+                content);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                Console.WriteLine(
+                    $"ACCEPT RIDE ERROR : {content}");
+
+                return false;
+            }
+
+            return true;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(
+                $"ERREUR AcceptRideAsync : {ex}");
 
             return false;
         }
-
-        return true;
     }
-    catch (Exception ex)
+
+
+    // ============================================================
+    // TERMINER COURSE
+    // ============================================================
+
+    public async Task<bool> CompleteRideAsync(
+        int rideId,
+        int driverId)
     {
-        Console.WriteLine(
-            $"ERREUR AcceptRideAsync : {ex}");
+        try
+        {
+            var url =
+                $"{BaseUrl}/api/Ride/{rideId}" +
+                $"/complete?driverId={driverId}";
 
-        return false;
+            Console.WriteLine(
+                "====================================");
+
+            Console.WriteLine(
+                $"COMPLETE RIDE URL : {url}");
+
+            Console.WriteLine(
+                $"RideId   : {rideId}");
+
+            Console.WriteLine(
+                $"DriverId : {driverId}");
+
+            Console.WriteLine(
+                "====================================");
+
+            var response =
+                await _http.PutAsync(
+                    url,
+                    null);
+
+            var content =
+                await response.Content
+                    .ReadAsStringAsync();
+
+            Console.WriteLine(
+                $"COMPLETE RIDE STATUS : " +
+                $"{(int)response.StatusCode}");
+
+            Console.WriteLine(
+                $"COMPLETE RIDE RESPONSE : " +
+                content);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                Console.WriteLine(
+                    $"COMPLETE RIDE ERROR : {content}");
+
+                return false;
+            }
+
+            return true;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(
+                $"ERREUR CompleteRideAsync : {ex}");
+
+            return false;
+        }
     }
-}
 }

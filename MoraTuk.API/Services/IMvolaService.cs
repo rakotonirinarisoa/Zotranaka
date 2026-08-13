@@ -10,5 +10,10 @@ namespace MoraTuk.API.Services
             string serverCorrelationId);
         Task<string> GetTransactionAsync(
             string transactionReference);
+        Task<string> TransferToDriverAsync(
+            string driverMvolaNumber,
+            decimal amount,
+            string description,
+            string reference);
     }
 }

@@ -22,4 +22,10 @@ public class CreateRideDto
     public string RideType { get; set; } = "Shared";
 
     public string Status { get; set; } = "Pending";
+
+    // ============================================================
+    // NUMÉRO MVOLA DU CLIENT
+    // ============================================================
+
+    public string DebitMsisdn { get; set; } = "";
 }
