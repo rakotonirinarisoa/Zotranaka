@@ -1,5 +1,6 @@
 ﻿using Microsoft.Extensions.Logging;
 using MoraTuk.Mobile.Services;
+using SkiaSharp.Views.Maui.Controls.Hosting;
 
 namespace MoraTuk.Mobile;
 
@@ -11,6 +12,7 @@ public static class MauiProgram
 
         builder
             .UseMauiApp<App>()
+            .UseSkiaSharp()
             .ConfigureFonts(fonts =>
             {
                 fonts.AddFont(

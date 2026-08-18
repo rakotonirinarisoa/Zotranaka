@@ -31,4 +31,13 @@ public class Driver
 
     // Numéro MVola du chauffeur
     public string? MvolaNumber { get; set; }
+
+    public int? AikaDeviceId { get; set; }
+
+    public string? AikaSerialNumber { get; set; }
+
+
+    public string? AikaUsername { get; set; }
+
+    public string? AikaPassword { get; set; }
 }

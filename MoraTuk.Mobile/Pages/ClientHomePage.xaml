@@ -5,7 +5,7 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
     x:Class="MoraTuk.Mobile.Pages.ClientHomePage">
 
-    <ScrollView>
+    <ScrollView x:Name="MainScrollView">
 
         <VerticalStackLayout
             Padding="20"
@@ -14,12 +14,20 @@
             <!-- Header -->
 
             <Label
-                Text="🛺 MoraTuk"
+                Text="🛺 ZOTRANAKA"
                 FontSize="30"
                 FontAttributes="Bold"
                 HorizontalOptions="Center"
                 TextColor="#00A86B"/>
-
+             <Frame BackgroundColor="White" 
+                CornerRadius="15" 
+                Padding="0" 
+                HasShadow="True" 
+                HeightRequest="300">
+                    <WebView x:Name="MapWebView"
+                    VerticalOptions="Fill"
+                    HorizontalOptions="Fill" />
+            </Frame>
             <Label
                 Text="Où voulez-vous aller ?"
                 FontSize="18"
@@ -206,7 +214,42 @@
                     TextColor="#555"/>
 
             </Frame>
+            <Frame
+                x:Name="MvolaPaymentFrame"
+                IsVisible="False"
+                BackgroundColor="#FFF8E1"
+                BorderColor="#FF9800"
+                CornerRadius="15"
+                Padding="20"
+                HasShadow="True">
 
+                <VerticalStackLayout
+                    Spacing="10">
+
+                    <Label
+                        Text="🟡 Paiement MVola en attente"
+                        FontSize="20"
+                        FontAttributes="Bold"
+                        TextColor="#E65100"
+                        HorizontalOptions="Center"/>
+
+                    <Label
+                        Text="Une demande de paiement est en attente."
+                        FontSize="16"
+                        TextColor="#333333"
+                        HorizontalOptions="Center"/>
+
+                    <Label
+                        Text="Veuillez valider votre paiement MVola."
+                        FontSize="16"
+                        FontAttributes="Bold"
+                        TextColor="#333333"
+                        HorizontalOptions="Center"/>
+
+                </VerticalStackLayout>
+
+            </Frame>
+            
         </VerticalStackLayout>
 
     </ScrollView>

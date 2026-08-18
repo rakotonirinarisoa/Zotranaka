@@ -10,6 +10,10 @@ public partial class DriverHomePage : ContentPage
 
     private bool _started = false;
 
+    private readonly HashSet<int> _displayedRideIds = new();
+
+    private readonly HashSet<int> _paymentMonitoring = new();
+
     public DriverHomePage(
         DriverHubService hubService,
         int driverId)
@@ -23,36 +27,67 @@ public partial class DriverHomePage : ContentPage
         // NOUVELLE COURSE VIA SIGNALR
         // ============================================================
 
-        _hubService.OnNewRideReceived = ride =>
-        {
-            MainThread.BeginInvokeOnMainThread(async () =>
+       _hubService.OnNewRideReceived =
+            ride =>
             {
-                try
-                {
-                    AddRideCard(ride);
+                MainThread.BeginInvokeOnMainThread(
+                    async () =>
+                    {
+                        try
+                        {
+                            Console.WriteLine(
+                                $"SIGNALR -> DriverHomePage : RideId={ride.RideId}");
 
-                    RideLabel.Text =
-                        "Nouvelle course disponible";
+                            Console.WriteLine(
+                                $"SIGNALR -> Status={ride.Status}");
 
-                    await DisplayAlert(
-                        "🚕 NOUVELLE COURSE",
-                        $"Course #{ride.RideId}\n\n" +
-                        $"📍 Départ : {ride.Departure}\n" +
-                        $"🎯 Destination : {ride.Destination}\n\n" +
-                        $"💰 Prix : {ride.Price:F0} Ar\n" +
-                        $"📏 Distance : " +
-                        $"{ride.DistanceToDriver:F2} km",
-                        "OK");
-                }
-                catch (Exception ex)
-                {
-                    await DisplayAlert(
-                        "❌ ERREUR AFFICHAGE",
-                        ex.ToString(),
-                        "OK");
-                }
-            });
-        };
+                            // ====================================================
+                            // IMPORTANT
+                            // ====================================================
+                            // Une nouvelle course doit toujours être disponible
+                            // pour le chauffeur.
+                            //
+                            // Si l'API envoie WaitingDriver, on garde cet état.
+                            // ====================================================
+
+                            if (string.IsNullOrWhiteSpace(ride.Status))
+                            {
+                                ride.Status = "WaitingDriver";
+                            }
+
+                            // ====================================================
+                            // AJOUTER LA CARTE
+                            // ====================================================
+
+                            AddRideCard(ride);
+
+                            RideLabel.Text =
+                                "Nouvelle course disponible";
+
+                            Console.WriteLine(
+                                $"Carte course #{ride.RideId} ajoutée.");
+
+                            await DisplayAlert(
+                                "🚕 NOUVELLE COURSE",
+                                $"Course #{ride.RideId}\n\n" +
+                                $"📍 Départ : {ride.Departure}\n" +
+                                $"🏁 Destination : {ride.Destination}\n\n" +
+                                $"💰 Prix : {ride.Price:F0} Ar\n" +
+                                $"📏 Distance : {ride.DistanceToDriver:F2} km",
+                                "OK");
+                        }
+                        catch (Exception ex)
+                        {
+                            Console.WriteLine(
+                                $"ERREUR AFFICHAGE SIGNALR : {ex}");
+
+                            await DisplayAlert(
+                                "❌ ERREUR AFFICHAGE",
+                                ex.ToString(),
+                                "OK");
+                        }
+                    });
+            };
     }
 
 
@@ -71,12 +106,6 @@ public partial class DriverHomePage : ContentPage
 
         try
         {
-            await DisplayAlert(
-                "CHAUFFEUR",
-                $"DriverHomePage ouverte.\n\n" +
-                $"DriverId = {_driverId}",
-                "OK");
-
             StatusLabel.Text =
                 "Connexion au serveur...";
 
@@ -87,13 +116,6 @@ public partial class DriverHomePage : ContentPage
 
             StatusLabel.Text =
                 "Statut : En ligne 🟢";
-
-            await DisplayAlert(
-                "CHAUFFEUR ✅",
-                $"DriverId = {_driverId}\n\n" +
-                "Connexion réussie.\n\n" +
-                "Les courses disponibles sont affichées.",
-                "OK");
         }
         catch (Exception ex)
         {
@@ -123,6 +145,8 @@ public partial class DriverHomePage : ContentPage
 
             RidesContainer.Children.Clear();
 
+            _displayedRideIds.Clear();
+
             var rideService =
                 new RideService();
 
@@ -138,34 +162,34 @@ public partial class DriverHomePage : ContentPage
                 rides
                     .Where(x =>
                         x.DriverId == _driverId)
-                    .OrderByDescending(x =>
-                        x.RideId)
+                    .OrderByDescending(
+                        x => x.RideId)
                     .ToList();
 
             Console.WriteLine(
                 $"Courses pour DriverId {_driverId} : " +
                 $"{driverRides.Count}");
 
-            if (!driverRides.Any())
-            {
-                RideLabel.Text =
-                    "Aucune course active";
-
-                return;
-            }
-
             foreach (var ride in driverRides)
             {
                 AddRideCard(ride);
             }
 
+            if (!driverRides.Any())
+            {
+                RideLabel.Text =
+                    "Aucune course disponible";
+
+                return;
+            }
+
             RideLabel.Text =
-                $"{driverRides.Count} course(s) active(s)";
+                $"{driverRides.Count} course(s)";
         }
         catch (Exception ex)
         {
             Console.WriteLine(
-                $"ERREUR LOAD EXISTING RIDES : {ex}");
+                $"ERREUR LOAD RIDES : {ex}");
 
             RideLabel.Text =
                 "Erreur lors du chargement";
@@ -179,12 +203,36 @@ public partial class DriverHomePage : ContentPage
 
 
     // ============================================================
-    // CRÉER CARTE COURSE
+    // AJOUTER CARTE COURSE
     // ============================================================
 
     private void AddRideCard(
         RideNotification ride)
     {
+        if (ride == null)
+            return;
+
+        // ========================================================
+        // EVITER DOUBLON
+        // ========================================================
+
+        if (_displayedRideIds.Contains(
+            ride.RideId))
+        {
+            Console.WriteLine(
+                $"Course #{ride.RideId} déjà affichée.");
+
+            return;
+        }
+
+        _displayedRideIds.Add(
+            ride.RideId);
+
+
+        // ========================================================
+        // FRAME
+        // ========================================================
+
         var frame =
             new Frame
             {
@@ -198,11 +246,17 @@ public partial class DriverHomePage : ContentPage
                 HasShadow = true
             };
 
+
         var layout =
             new VerticalStackLayout
             {
                 Spacing = 10
             };
+
+
+        // ========================================================
+        // TITRE
+        // ========================================================
 
         var title =
             new Label
@@ -219,42 +273,28 @@ public partial class DriverHomePage : ContentPage
                     Colors.Black
             };
 
+
         // ========================================================
         // STATUT
         // ========================================================
 
-       var statusText =
-            ride.Status switch
-            {
-                "WaitingDriver" =>
-                    "🟡 Course disponible",
-
-                "Accepted" =>
-                    "🟢 Course acceptée",
-
-                "InProgress" =>
-                    "🚕 Course en cours",
-
-                _ =>
-                    $"ℹ️ {ride.Status}"
-            };
-
         var status =
             new Label
             {
-                Text = statusText,
-
                 FontSize = 16,
 
                 FontAttributes =
-                    FontAttributes.Bold,
-
-                TextColor =
-                    ride.Status == "Accepted" ||
-                    ride.Status == "InProgress"
-                        ? Colors.Green
-                        : Colors.Orange
+                    FontAttributes.Bold
             };
+
+        UpdateStatusLabel(
+            ride,
+            status);
+
+
+        // ========================================================
+        // SEPARATOR
+        // ========================================================
 
         var separator =
             new BoxView
@@ -262,8 +302,14 @@ public partial class DriverHomePage : ContentPage
                 HeightRequest = 1,
 
                 BackgroundColor =
-                    Color.FromArgb("#DDDDDD")
+                    Color.FromArgb(
+                        "#DDDDDD")
             };
+
+
+        // ========================================================
+        // INFOS
+        // ========================================================
 
         var info =
             new Label
@@ -271,7 +317,8 @@ public partial class DriverHomePage : ContentPage
                 FontSize = 17,
 
                 TextColor =
-                    Color.FromArgb("#333333"),
+                    Color.FromArgb(
+                        "#333333"),
 
                 Text =
                     $"""
@@ -361,83 +408,77 @@ public partial class DriverHomePage : ContentPage
                 HorizontalOptions =
                     LayoutOptions.Fill,
 
-                IsVisible =
-                    false
+                IsVisible = false
             };
 
-            // ========================================================
-            // AFFICHAGE SELON LE STATUT
-            // ========================================================
 
-            if (ride.Status == "WaitingDriver")
-            {
-                acceptButton.IsVisible = true;
-                rejectButton.IsVisible = true;
-                completeButton.IsVisible = false;
-            }
-            else if (
-                ride.Status == "Accepted" ||
-                ride.Status == "InProgress")
-            {
-                acceptButton.IsVisible = false;
-                rejectButton.IsVisible = false;
-                completeButton.IsVisible = true;
-            }
-            else
-            {
-                acceptButton.IsVisible = false;
-                rejectButton.IsVisible = false;
-                completeButton.IsVisible = false;
-            }
-        
+        // ========================================================
+        // AFFICHAGE SELON STATUT
+        // ========================================================
+
+        ApplyRideState(
+            ride,
+            acceptButton,
+            rejectButton,
+            completeButton);
+
+
         // ========================================================
         // ACCEPTER
         // ========================================================
 
         acceptButton.Clicked +=
-            async (sender, e) =>
+            async (_, _) =>
             {
                 try
                 {
-                    acceptButton.IsEnabled = false;
-                    rejectButton.IsEnabled = false;
+                    acceptButton.IsEnabled =
+                        false;
 
-                    await DisplayAlert(
-                        "ACCEPTER",
-                        $"Tentative d'acceptation " +
-                        $"de la course #{ride.RideId}.",
-                        "OK");
+                    rejectButton.IsEnabled =
+                        false;
 
                     var rideService =
                         new RideService();
 
-                    var success =
-                        await rideService.AcceptRideAsync(
-                            ride.RideId,
-                            _driverId);
+                    var result =
+                        await rideService
+                            .AcceptRideAsync(
+                                ride.RideId,
+                                _driverId);
 
-                    if (!success)
+                    if (!result.Success)
                     {
-                        acceptButton.IsEnabled = true;
-                        rejectButton.IsEnabled = true;
+                        acceptButton.IsEnabled =
+                            true;
+
+                        rejectButton.IsEnabled =
+                            true;
 
                         await DisplayAlert(
-                            "❌ ERREUR",
-                            "La course n'est plus disponible.",
+                            "❌ ERREUR ACCEPTATION",
+                            $"HTTP : {result.StatusCode}\n\n" +
+                            $"Message : {result.Message}\n\n" +
+                            $"Réponse API :\n" +
+                            result.ResponseBody,
                             "OK");
 
                         return;
                     }
 
+
                     // =================================================
                     // COURSE ACCEPTÉE
                     // =================================================
 
+                    ride.Status =
+                        "Accepted";
+
                     status.Text =
-                        "🟢 Course en cours";
+                        "🟡 Paiement MVola en attente";
 
                     status.TextColor =
-                        Colors.DarkBlue;
+                        Colors.Orange;
 
                     acceptButton.IsVisible =
                         false;
@@ -446,26 +487,45 @@ public partial class DriverHomePage : ContentPage
                         false;
 
                     completeButton.IsVisible =
-                        true;
+                        false;
 
                     RideLabel.Text =
-                        "Course en cours";
+                        "Paiement MVola en attente...";
 
                     StatusLabel.Text =
-                        "Statut : Occupé 🔴";
+                        "Statut : Paiement MVola 🟡";
+
 
                     await DisplayAlert(
                         "✅ COURSE ACCEPTÉE",
                         $"Course #{ride.RideId} acceptée.\n\n" +
-                        "Vous êtes maintenant en course.\n\n" +
-                        "Quand vous arrivez à destination, " +
-                        "appuyez sur « Course terminée ».",
+                        "Le paiement MVola est en attente de confirmation.",
                         "OK");
+
+
+                    // =================================================
+                    // MONITORING PAIEMENT
+                    // =================================================
+
+                    if (_paymentMonitoring.Add(
+                        ride.RideId))
+                    {
+                        _ = MonitorPaymentAsync(
+                            ride,
+                            status,
+                            acceptButton,
+                            rejectButton,
+                            completeButton,
+                            frame);
+                    }
                 }
                 catch (Exception ex)
                 {
-                    acceptButton.IsEnabled = true;
-                    rejectButton.IsEnabled = true;
+                    acceptButton.IsEnabled =
+                        true;
+
+                    rejectButton.IsEnabled =
+                        true;
 
                     await DisplayAlert(
                         "❌ ERREUR ACCEPTATION",
@@ -480,7 +540,7 @@ public partial class DriverHomePage : ContentPage
         // ========================================================
 
         rejectButton.Clicked +=
-            async (sender, e) =>
+            async (_, _) =>
             {
                 try
                 {
@@ -495,36 +555,52 @@ public partial class DriverHomePage : ContentPage
                     if (!confirm)
                         return;
 
+
+                    acceptButton.IsEnabled =
+                        false;
+
+                    rejectButton.IsEnabled =
+                        false;
+
+
                     var rideService =
                         new RideService();
 
-                    var success =
-                        await RejectRideAsync(
-                            ride.RideId,
-                            _driverId);
+                    var result =
+                        await rideService
+                            .RejectRideAsync(
+                                ride.RideId,
+                                _driverId);
 
-                    if (!success)
+
+                    if (!result.Success)
                     {
+                        acceptButton.IsEnabled =
+                            true;
+
+                        rejectButton.IsEnabled =
+                            true;
+
                         await DisplayAlert(
-                            "❌ ERREUR",
-                            "Impossible de refuser la course.",
+                            "❌ ERREUR REFUS",
+                            $"HTTP : {result.StatusCode}\n\n" +
+                            $"Message : {result.Message}\n\n" +
+                            $"Réponse API :\n" +
+                            result.ResponseBody,
                             "OK");
 
                         return;
                     }
 
-                    RidesContainer.Children.Remove(
+
+                    RemoveRideCard(
+                        ride.RideId,
                         frame);
 
-                    var remaining =
-                        RidesContainer
-                            .Children
-                            .Count;
 
                     RideLabel.Text =
-                        remaining > 0
-                            ? $"{remaining} course(s) disponible(s)"
-                            : "Aucune course disponible";
+                        "Aucune course disponible";
+
 
                     await DisplayAlert(
                         "COURSE REFUSÉE",
@@ -533,6 +609,12 @@ public partial class DriverHomePage : ContentPage
                 }
                 catch (Exception ex)
                 {
+                    acceptButton.IsEnabled =
+                        true;
+
+                    rejectButton.IsEnabled =
+                        true;
+
                     await DisplayAlert(
                         "❌ ERREUR REFUS",
                         ex.ToString(),
@@ -546,7 +628,7 @@ public partial class DriverHomePage : ContentPage
         // ========================================================
 
         completeButton.Clicked +=
-            async (sender, e) =>
+            async (_, _) =>
             {
                 try
                 {
@@ -561,8 +643,10 @@ public partial class DriverHomePage : ContentPage
                     if (!confirm)
                         return;
 
+
                     completeButton.IsEnabled =
                         false;
+
 
                     var rideService =
                         new RideService();
@@ -572,6 +656,7 @@ public partial class DriverHomePage : ContentPage
                             .CompleteRideAsync(
                                 ride.RideId,
                                 _driverId);
+
 
                     if (!success)
                     {
@@ -586,9 +671,10 @@ public partial class DriverHomePage : ContentPage
                         return;
                     }
 
-                    // =================================================
-                    // COURSE TERMINÉE
-                    // =================================================
+
+                    ride.Status =
+                        "Completed";
+
 
                     status.Text =
                         "✅ Course terminée";
@@ -596,36 +682,23 @@ public partial class DriverHomePage : ContentPage
                     status.TextColor =
                         Colors.Green;
 
-                    RideLabel.Text =
-                        "Chauffeur disponible pour une nouvelle course";
-
                     StatusLabel.Text =
                         "Statut : En ligne 🟢";
+
+                    RideLabel.Text =
+                        "Chauffeur disponible";
+
+
+                    RemoveRideCard(
+                        ride.RideId,
+                        frame);
+
 
                     await DisplayAlert(
                         "🏁 COURSE TERMINÉE",
                         $"Course #{ride.RideId} terminée.\n\n" +
-                        "Vous êtes maintenant disponible " +
-                        "pour une nouvelle course.",
+                        "Vous êtes maintenant disponible.",
                         "OK");
-
-                    // -------------------------------------------------
-                    // RETIRER LA CARTE
-                    // -------------------------------------------------
-
-                    RidesContainer.Children.Remove(
-                        frame);
-
-                    var remaining =
-                        RidesContainer
-                            .Children
-                            .Count;
-
-                    if (remaining == 0)
-                    {
-                        RideLabel.Text =
-                            "Aucune course disponible";
-                    }
                 }
                 catch (Exception ex)
                 {
@@ -661,20 +734,6 @@ public partial class DriverHomePage : ContentPage
 
 
         // ========================================================
-        // BOUTON TERMINER
-        // ========================================================
-
-        var completeLayout =
-            new VerticalStackLayout
-            {
-                Spacing = 5
-            };
-
-        completeLayout.Children.Add(
-            completeButton);
-
-
-        // ========================================================
         // CONSTRUCTION
         // ========================================================
 
@@ -694,10 +753,12 @@ public partial class DriverHomePage : ContentPage
             buttons);
 
         layout.Children.Add(
-            completeLayout);
+            completeButton);
+
 
         frame.Content =
             layout;
+
 
         RidesContainer.Children.Add(
             frame);
@@ -705,70 +766,427 @@ public partial class DriverHomePage : ContentPage
 
 
     // ============================================================
-    // REFUSER UNE COURSE
+    // MONITOR PAYMENT
     // ============================================================
 
-    private async Task<bool> RejectRideAsync(
-        int rideId,
-        int driverId)
+    private async Task MonitorPaymentAsync(
+        RideNotification ride,
+        Label status,
+        Button acceptButton,
+        Button rejectButton,
+        Button completeButton,
+        Frame frame)
     {
         try
         {
+            const int maxAttempts = 30;
+
             var rideService =
                 new RideService();
 
-            var url =
-                $"{MoraTuk.Mobile.Helpers.ApiSettings.BaseUrl.TrimEnd('/')}" +
-                $"/api/Ride/{rideId}/reject?driverId={driverId}";
+            RideLabel.Text =
+                "Paiement MVola en attente...";
 
-            Console.WriteLine(
-                $"REJECT RIDE URL : {url}");
+            StatusLabel.Text =
+                "Statut : Paiement MVola 🟡";
 
-            using var http =
-                new HttpClient
+            status.Text =
+                "🟡 Paiement MVola en attente";
+
+            status.TextColor =
+                Colors.Orange;
+
+            completeButton.IsVisible =
+                false;
+
+
+            for (int attempt = 1;
+                 attempt <= maxAttempts;
+                 attempt++)
+            {
+                await Task.Delay(
+                    TimeSpan.FromSeconds(5));
+
+
+                var result =
+                    await rideService
+                        .GetPaymentStatusAsync(
+                            ride.RideId);
+
+
+                if (result == null)
                 {
-                    Timeout =
-                        TimeSpan.FromSeconds(20)
-                };
+                    continue;
+                }
 
-            var response =
-                await http.PutAsync(
-                    url,
-                    null);
 
-            var content =
-                await response.Content
-                    .ReadAsStringAsync();
+                Console.WriteLine(
+                    $"PAYMENT CHECK #{attempt}");
 
-            Console.WriteLine(
-                $"REJECT STATUS : " +
-                $"{(int)response.StatusCode}");
+                Console.WriteLine(
+                    $"RideStatus = {result.RideStatus}");
 
-            Console.WriteLine(
-                $"REJECT RESPONSE : {content}");
+                Console.WriteLine(
+                    $"PaymentStatus = {result.PaymentStatus}");
 
-            return response.IsSuccessStatusCode;
+                Console.WriteLine(
+                    $"MvolaStatus = {result.MvolaStatus}");
+
+
+                // ====================================================
+                // PAIEMENT CONFIRMÉ
+                // ====================================================
+
+                if (result.Confirmed &&
+                    string.Equals(
+                        result.PaymentStatus,
+                        "Success",
+                        StringComparison.OrdinalIgnoreCase))
+                {
+                    ride.Status =
+                        "InProgress";
+
+                    status.Text =
+                        "🚕 Course en cours";
+
+                    status.TextColor =
+                        Colors.DarkBlue;
+
+                    completeButton.IsVisible =
+                        true;
+
+                    completeButton.IsEnabled =
+                        true;
+
+                    RideLabel.Text =
+                        "Course en cours";
+
+                    StatusLabel.Text =
+                        "Statut : Occupé 🔴";
+
+
+                    await DisplayAlert(
+                        "💰 PAIEMENT CONFIRMÉ",
+                        $"Le paiement MVola de la course " +
+                        $"#{ride.RideId} est confirmé.\n\n" +
+                        "La course peut maintenant commencer.",
+                        "OK");
+
+
+                    _paymentMonitoring.Remove(
+                        ride.RideId);
+
+                    return;
+                }
+
+
+                // ====================================================
+                // PAIEMENT ÉCHOUÉ
+                // ====================================================
+
+                if (result.Failed ||
+                    string.Equals(
+                        result.PaymentStatus,
+                        "Failed",
+                        StringComparison.OrdinalIgnoreCase))
+                {
+                    // =================================================
+                    // RÉINITIALISER LA COURSE
+                    // =================================================
+
+                    ride.Status = "WaitingDriver";
+
+                    // =================================================
+                    // STATUT AFFICHÉ
+                    // =================================================
+
+                    status.Text =
+                        "🟡 Course disponible - paiement échoué";
+
+                    status.TextColor =
+                        Colors.Orange;
+
+                    // =================================================
+                    // RÉAFFICHER LES BOUTONS
+                    // =================================================
+
+                    acceptButton.IsVisible = true;
+                    acceptButton.IsEnabled = true;
+
+                    rejectButton.IsVisible = true;
+                    rejectButton.IsEnabled = true;
+
+                    // =================================================
+                    // TERMINER IMPOSSIBLE
+                    // =================================================
+
+                    completeButton.IsVisible = false;
+                    completeButton.IsEnabled = false;
+
+                    // =================================================
+                    // CHAUFFEUR DISPONIBLE
+                    // =================================================
+
+                    RideLabel.Text =
+                        "Course disponible - vous pouvez réessayer";
+
+                    StatusLabel.Text =
+                        "Statut : En ligne 🟢";
+
+                    // =================================================
+                    // ARRÊTER UNIQUEMENT LE MONITORING
+                    // =================================================
+
+                    _paymentMonitoring.Remove(
+                        ride.RideId);
+
+                    await DisplayAlert(
+                        "❌ PAIEMENT ÉCHOUÉ",
+                        $"Le paiement MVola de la course " +
+                        $"#{ride.RideId} a échoué.\n\n" +
+                        "La course est de nouveau disponible.\n" +
+                        "Vous pouvez tenter de l'accepter à nouveau.",
+                        "OK");
+
+                    return;
+                }
+
+
+                // ====================================================
+                // PENDING
+                // ====================================================
+
+                status.Text =
+                    "🟡 Paiement MVola en attente...";
+
+                RideLabel.Text =
+                    $"Vérification du paiement...\n" +
+                    $"Tentative {attempt}/{maxAttempts}";
+            }
+
+
+            // ========================================================
+            // TIMEOUT
+            // ========================================================
+
+            status.Text =
+                "⚠️ Paiement toujours en attente";
+
+            status.TextColor =
+                Colors.Orange;
+
+            completeButton.IsVisible =
+                false;
+
+            RideLabel.Text =
+                "Paiement MVola toujours en attente";
+
+            StatusLabel.Text =
+                "Statut : Paiement en attente 🟡";
+
+
+            await DisplayAlert(
+                "⏳ PAIEMENT EN ATTENTE",
+                $"Le paiement de la course #{ride.RideId} " +
+                "n'est toujours pas confirmé.",
+                "OK");
+
+
+            _paymentMonitoring.Remove(
+                ride.RideId);
         }
         catch (Exception ex)
         {
-            Console.WriteLine(
-                $"ERREUR REJECT : {ex}");
+            _paymentMonitoring.Remove(
+                ride.RideId);
 
-            return false;
+            Console.WriteLine(
+                $"ERREUR MONITOR PAYMENT : {ex}");
+
+            await DisplayAlert(
+                "❌ ERREUR PAIEMENT",
+                ex.ToString(),
+                "OK");
         }
     }
 
 
     // ============================================================
-    // DISPARITION PAGE
+    // STATUT
+    // ============================================================
+
+    private static void UpdateStatusLabel(
+        RideNotification ride,
+        Label status)
+    {
+        switch (ride.Status)
+        {
+            case "WaitingDriver":
+
+                status.Text =
+                    "🟡 Course disponible";
+
+                status.TextColor =
+                    Colors.Orange;
+
+                break;
+
+
+            case "Accepted":
+
+                status.Text =
+                    "🟡 Paiement MVola en attente";
+
+                status.TextColor =
+                    Colors.Orange;
+
+                break;
+
+
+            case "InProgress":
+
+                status.Text =
+                    "🚕 Course en cours";
+
+                status.TextColor =
+                    Colors.DarkBlue;
+
+                break;
+
+
+            case "PaymentFailed":
+
+                status.Text =
+                    "❌ Paiement échoué";
+
+                status.TextColor =
+                    Colors.Red;
+
+                break;
+
+
+            default:
+
+                status.Text =
+                    $"ℹ️ {ride.Status}";
+
+                status.TextColor =
+                    Colors.Gray;
+
+                break;
+        }
+    }
+
+
+    // ============================================================
+    // ETAT DES BOUTONS
+    // ============================================================
+
+    private static void ApplyRideState(
+        RideNotification ride,
+        Button accept,
+        Button reject,
+        Button complete)
+        {
+            // Tout cacher d'abord
+            accept.IsVisible = false;
+            reject.IsVisible = false;
+            complete.IsVisible = false;
+
+            accept.IsEnabled = true;
+            reject.IsEnabled = true;
+            complete.IsEnabled = true;
+
+            // ============================================================
+            // NOUVELLE COURSE
+            // ============================================================
+
+            if (string.Equals(
+                    ride.Status,
+                    "WaitingDriver",
+                    StringComparison.OrdinalIgnoreCase))
+            {
+                accept.IsVisible = true;
+                accept.IsEnabled = true;
+                reject.IsVisible = true;
+                 reject.IsEnabled = true;
+
+                Console.WriteLine(
+                    $"UI : Course #{ride.RideId} => ACCEPT / REFUSER visibles");
+
+                return;
+            }
+
+            // ============================================================
+            // COURSE ACCEPTÉE
+            // ============================================================
+
+            if (string.Equals(
+                    ride.Status,
+                    "Accepted",
+                    StringComparison.OrdinalIgnoreCase))
+            {
+                // Paiement MVola en attente
+                accept.IsVisible = false;
+                reject.IsVisible = false;
+                complete.IsVisible = false;
+
+                return;
+            }
+
+            // ============================================================
+            // COURSE EN COURS
+            // ============================================================
+
+            if (string.Equals(
+                    ride.Status,
+                    "InProgress",
+                    StringComparison.OrdinalIgnoreCase))
+            {
+                accept.IsVisible = false;
+                reject.IsVisible = false;
+                complete.IsVisible = true;
+
+                return;
+            }
+        }
+
+
+    // ============================================================
+    // SUPPRIMER CARTE
+    // ============================================================
+
+    private void RemoveRideCard(
+        int rideId,
+        Frame frame)
+    {
+        _displayedRideIds.Remove(
+            rideId);
+
+        _paymentMonitoring.Remove(
+            rideId);
+
+        MainThread.BeginInvokeOnMainThread(
+            () =>
+            {
+                if (RidesContainer.Children
+                    .Contains(frame))
+                {
+                    RidesContainer.Children.Remove(
+                        frame);
+                }
+            });
+    }
+
+
+    // ============================================================
+    // DISPARITION
     // ============================================================
 
     protected override void OnDisappearing()
     {
         base.OnDisappearing();
 
-        // On conserve SignalR.
-        // Le chauffeur pourra continuer à recevoir
-        // les nouvelles courses.
+        // SignalR reste connecté.
     }
 }

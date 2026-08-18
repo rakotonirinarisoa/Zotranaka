@@ -33,6 +33,6 @@ public class RideNotification
     // STATUT DE LA COURSE
     // ============================================================
 
-    public string Status { get; set; } = "";
+    public string Status { get; set; } = "WaitingDriver";
 }
 

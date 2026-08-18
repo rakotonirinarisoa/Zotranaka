@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>MoraTuk Map</title>
+
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <style>
+        html, body, #map {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100vh;
+        }
+
+        .marker-pin {
+            width: 26px;
+            height: 26px;
+            border-radius: 50% 50% 50% 0;
+            transform: rotate(-45deg);
+            border: 2px solid white;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.4);
+        }
+        .marker-client { background: #00A86B; }
+        .marker-driver { background: #FFC107; }
+        .marker-destination { background: #E53935; }
+
+        .blue-dot-wrapper {
+            position: relative;
+            width: 40px;
+            height: 40px;
+        }
+        .blue-dot {
+            position: absolute;
+            top: 11px;
+            left: 11px;
+            width: 18px;
+            height: 18px;
+            background: #4285F4;
+            border: 3px solid white;
+            border-radius: 50%;
+            box-shadow: 0 0 8px rgba(66,133,244,0.6);
+            z-index: 2;
+        }
+        .blue-dot-pulse {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 40px;
+            height: 40px;
+            background: rgba(66,133,244,0.25);
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+            z-index: 1;
+        }
+        @keyframes pulse {
+            0% { transform: scale(0.6); opacity: 1; }
+            100% { transform: scale(1.5); opacity: 0; }
+        }
+    </style>
+</head>
+<body>
+    <div id="map"></div>
+
+    <script>
+        const OSRM_URL = "https://router.project-osrm.org/route/v1/driving";
+        const DEFAULT_CENTER = [-18.8792, 47.5079]; // Antananarivo [lat, lon] - vue par defaut avant GPS
+
+        let map = null;
+        let clientMarker = null;
+        let driverMarker = null;
+        let destinationMarker = null;
+        let routeLine = null;
+        let blueDotIcon = null;
+
+        // ============================================================
+        // INITIALISATION UNIQUE DE LA CARTE
+        // (appelee une seule fois via window "load")
+        // ============================================================
+        function initMap() {
+            if (map) {
+                console.log("MAP : deja initialisee, initMap ignore.");
+                return;
+            }
+
+            map = L.map("map", { zoomControl: true }).setView(DEFAULT_CENTER, 13);
+
+            L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+                maxZoom: 19,
+                attribution: "&copy; OpenStreetMap contributors"
+            }).addTo(map);
+
+            blueDotIcon = L.divIcon({
+                className: "",
+                html: '<div class="blue-dot-wrapper"><div class="blue-dot-pulse"></div><div class="blue-dot"></div></div>',
+                iconSize: [40, 40],
+                iconAnchor: [20, 20]
+            });
+
+            console.log("MAP : initialisation terminee.");
+            window.location.href = "https://mapready/signal";
+        }
+
+        function pinIcon(cssClass) {
+            return L.divIcon({
+                className: "",
+                html: `<div class="marker-pin ${cssClass}"></div>`,
+                iconSize: [26, 26],
+                iconAnchor: [13, 26]
+            });
+        }
+
+        function centerMap(lat, lon, zoom) {
+            if (!map) {
+                console.log("MAP : centerMap appele avant initialisation.");
+                return;
+            }
+            map.setView([lat, lon], zoom || 15);
+            map.invalidateSize();
+        }
+
+        function setClientMarker(lat, lon) {
+            if (!map) {
+                console.log("MAP : setClientMarker appele avant initialisation.");
+                return;
+            }
+
+            if (clientMarker) {
+                clientMarker.setLatLng([lat, lon]);
+            } else {
+                clientMarker = L.marker([lat, lon], { icon: blueDotIcon }).addTo(map);
+            }
+        }
+
+        function setDriverMarker(lat, lon) {
+            if (!map) return;
+            if (driverMarker) map.removeLayer(driverMarker);
+            driverMarker = L.marker([lat, lon], { icon: pinIcon("marker-driver") }).addTo(map);
+        }
+
+        function setDestinationMarker(lat, lon) {
+            if (!map) return;
+            if (destinationMarker) map.removeLayer(destinationMarker);
+            destinationMarker = L.marker([lat, lon], { icon: pinIcon("marker-destination") }).addTo(map);
+        }
+
+        function clearDestinationMarker() {
+            if (destinationMarker) {
+                map.removeLayer(destinationMarker);
+                destinationMarker = null;
+            }
+            clearRoute();
+        }
+
+        async function drawRoute(lat1, lon1, lat2, lon2) {
+            if (!map) return;
+
+            try {
+                const url = `${OSRM_URL}/${lon1},${lat1};${lon2},${lat2}?overview=full&geometries=geojson`;
+                const response = await fetch(url);
+                const data = await response.json();
+
+                if (!data.routes || data.routes.length === 0) {
+                    console.log("OSRM : aucun itineraire trouve.");
+                    return;
+                }
+
+                const coords = data.routes[0].geometry.coordinates.map(c => [c[1], c[0]]);
+
+                if (routeLine) map.removeLayer(routeLine);
+                routeLine = L.polyline(coords, { color: "#00A86B", weight: 5, opacity: 0.85 }).addTo(map);
+
+                map.fitBounds(routeLine.getBounds(), { padding: [60, 60] });
+            } catch (err) {
+                console.log("ERREUR OSRM : " + err);
+            }
+        }
+
+        function clearRoute() {
+            if (routeLine) {
+                map.removeLayer(routeLine);
+                routeLine = null;
+            }
+        }
+
+        // Une seule initialisation, declenchee au chargement de la page
+        window.addEventListener("load", initMap);
+    </script>
+</body>
+</html>

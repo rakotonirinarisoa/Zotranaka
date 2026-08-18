@@ -43,6 +43,11 @@ builder.Services.AddScoped<DistanceService>();
 // Service de gestion des payouts chauffeurs
 builder.Services.AddScoped<DriverPayoutService>();
 
+// AIKA GPS
+builder.Services.AddHttpClient<AikaLocationService>();
+
+builder.Services.AddHostedService<AikaTrackingWorker>();
+
 // ============================================================
 // MVOLA
 // ============================================================
@@ -51,6 +56,9 @@ builder.Services.Configure<MvolaSettings>(
     builder.Configuration.GetSection("Mvola"));
 
 builder.Services.AddHttpClient<IMvolaService, MvolaService>();
+
+builder.Services.Configure<AikaSettings>(
+    builder.Configuration.GetSection("Aika"));
 
 // ============================================================
 // APPLICATION

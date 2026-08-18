@@ -56,6 +56,18 @@ namespace MoraTuk.API.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
+                    b.Property<int?>("AikaDeviceId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("AikaPassword")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("AikaSerialNumber")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("AikaUsername")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<bool>("IsAvailable")
                         .HasColumnType("bit");
 

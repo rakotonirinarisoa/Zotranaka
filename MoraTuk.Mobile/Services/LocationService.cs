@@ -28,46 +28,63 @@ public class LocationService
     // GPS ACTUEL
     // ============================================================
 
-   public async Task<Location?> GetCurrentLocation()
-{
-    try
+    public async Task<Location?> GetCurrentLocation()
     {
-        var request = new GeolocationRequest(
-            GeolocationAccuracy.Best,
-            TimeSpan.FromSeconds(15));
-
-        var location =
-            await Geolocation.GetLocationAsync(request);
-
-        if (location == null)
+        try
         {
-            Console.WriteLine("GPS : NULL");
+            Location? bestLocation = null;
+
+            for (int i = 0; i < 8; i++)
+            {
+                var request = new GeolocationRequest(
+                    GeolocationAccuracy.Best,
+                    TimeSpan.FromSeconds(10)); // timeout plus long
+
+                var location = await Geolocation.GetLocationAsync(request);
+                if (location == null) continue;
+
+                Console.WriteLine(
+                    $"GPS TENTATIVE {i} : Lat={location.Latitude}, " +
+                    $"Lon={location.Longitude}, Précision={location.Accuracy}m");
+
+                if (bestLocation == null ||
+                    (location.Accuracy.HasValue &&
+                    (!bestLocation.Accuracy.HasValue ||
+                    location.Accuracy.Value < bestLocation.Accuracy.Value)))
+                {
+                    bestLocation = location;
+                }
+
+                // on accepte seulement une précision correcte
+                if (bestLocation?.Accuracy <= 30)
+                    break;
+
+                await Task.Delay(2000); // laisser le GPS "respirer"
+            }
+
+            if (bestLocation == null)
+            {
+                Console.WriteLine("GPS : aucune position obtenue après 8 tentatives.");
+                return null;
+            }
+
+            // On renvoie toujours la meilleure position trouvée, même imparfaite
+            // (seuil strict de 50m trop restrictif en usage réel : émulateur,
+            // intérieur, zones urbaines denses)
+            if (bestLocation.Accuracy is > 100)
+            {
+                Console.WriteLine($"GPS imprécis mais utilisé quand même : {bestLocation.Accuracy}m");
+            }
+
+            return bestLocation;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"GPS ERROR : {ex}");
             return null;
         }
-
-        Console.WriteLine(
-            $"GPS : Lat={location.Latitude:F6}, " +
-            $"Lon={location.Longitude:F6}, " +
-            $"Accuracy={location.Accuracy} m");
-
-        // Position trop imprécise
-        if (location.Accuracy.HasValue &&
-            location.Accuracy.Value > 100)
-        {
-            Console.WriteLine(
-                $"GPS trop imprécis : {location.Accuracy.Value} m");
-
-            return null;
-        }
-
-        return location;
     }
-    catch (Exception ex)
-    {
-        Console.WriteLine($"GPS ERROR : {ex}");
-        return null;
-    }
-}
+
     // ============================================================
     // ENREGISTRER POSITION UTILISATEUR
     // ============================================================

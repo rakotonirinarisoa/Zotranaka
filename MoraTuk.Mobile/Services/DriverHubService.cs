@@ -9,39 +9,13 @@ public class DriverHubService
 {
     private HubConnection? _connection;
 
-    // Transmet la nouvelle course à DriverHomePage
+    // ============================================================
+    // ÉVÉNEMENT NOUVELLE COURSE
+    // ============================================================
+
     public Action<RideNotification>? OnNewRideReceived { get; set; }
 
-    private async Task Alert(
-        string title,
-        string message)
-    {
-        try
-        {
-            await MainThread.InvokeOnMainThreadAsync(
-                async () =>
-                {
-                    var page =
-                        Application.Current?
-                            .Windows?
-                            .FirstOrDefault()?
-                            .Page;
-
-                    if (page != null)
-                    {
-                        await page.DisplayAlert(
-                            title,
-                            message,
-                            "OK");
-                    }
-                });
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine(
-                $"Erreur DisplayAlert : {ex}");
-        }
-    }
+    private int _driverId;
 
     // ============================================================
     // START SIGNALR
@@ -49,299 +23,321 @@ public class DriverHubService
 
     public async Task StartAsync(int driverId)
     {
-        try
+        if (driverId <= 0)
+            throw new ArgumentException(
+                $"DriverId invalide : {driverId}");
+
+        if (!ApiSettings.IsConfigured)
+            throw new Exception(
+                "ApiSettings.BaseUrl n'est pas configuré.");
+
+        _driverId = driverId;
+
+        // --------------------------------------------------------
+        // SI DÉJÀ CONNECTÉ
+        // --------------------------------------------------------
+
+        if (_connection != null &&
+            _connection.State == HubConnectionState.Connected)
         {
-            await Alert(
-                "SIGNALR 1",
-                $"DriverId : {driverId}");
+            Console.WriteLine(
+                $"SignalR déjà connecté pour DriverId={driverId}");
 
-            // ----------------------------------------------------
-            // VÉRIFICATION DRIVER ID
-            // ----------------------------------------------------
+            // On s'assure quand même que le chauffeur
+            // est enregistré.
+            await RegisterDriverAsync();
 
-            if (driverId <= 0)
+            return;
+        }
+
+        // --------------------------------------------------------
+        // NETTOYER ANCIENNE CONNEXION
+        // --------------------------------------------------------
+
+        if (_connection != null)
+        {
+            try
             {
-                throw new Exception(
-                    $"DriverId invalide : {driverId}");
+                await _connection.DisposeAsync();
+            }
+            catch
+            {
+                // Ignorer
             }
 
-            // ----------------------------------------------------
-            // VÉRIFICATION CONFIGURATION
-            // ----------------------------------------------------
+            _connection = null;
+        }
 
-            await Alert(
-                "SIGNALR 2",
-                $"BaseUrl :\n{ApiSettings.BaseUrl}\n\n" +
-                $"Configured : {ApiSettings.IsConfigured}");
+        // --------------------------------------------------------
+        // URL SIGNALR
+        // --------------------------------------------------------
 
-            if (!ApiSettings.IsConfigured)
-            {
-                throw new Exception(
-                    "ApiSettings.BaseUrl n'est pas configuré.");
-            }
+        var hubUrl =
+            $"{ApiSettings.BaseUrl.TrimEnd('/')}/trackingHub";
 
-            // ----------------------------------------------------
-            // SI DÉJÀ CONNECTÉ
-            // ----------------------------------------------------
+        Console.WriteLine(
+            "==========================================");
 
-            if (_connection != null &&
-                _connection.State ==
-                HubConnectionState.Connected)
-            {
-                await Alert(
-                    "SIGNALR",
-                    "Déjà connecté.");
+        Console.WriteLine(
+            "SIGNALR START");
 
-                return;
-            }
+        Console.WriteLine(
+            $"BaseUrl : {ApiSettings.BaseUrl}");
 
-            // ----------------------------------------------------
-            // NETTOYAGE ANCIENNE CONNEXION
-            // ----------------------------------------------------
+        Console.WriteLine(
+            $"HubUrl : {hubUrl}");
 
-            if (_connection != null)
+        Console.WriteLine(
+            $"DriverId : {driverId}");
+
+        Console.WriteLine(
+            "==========================================");
+
+        // --------------------------------------------------------
+        // CREATION CONNEXION
+        // --------------------------------------------------------
+
+        _connection =
+            new HubConnectionBuilder()
+                .WithUrl(
+                    hubUrl,
+                    options =>
+                    {
+                        // Cloudflare + téléphone :
+                        // LongPolling est plus fiable pour nos tests.
+                        options.Transports =
+                            HttpTransportType.LongPolling;
+                    })
+                .WithAutomaticReconnect(
+                    new[]
+                    {
+                        TimeSpan.Zero,
+                        TimeSpan.FromSeconds(2),
+                        TimeSpan.FromSeconds(5),
+                        TimeSpan.FromSeconds(10)
+                    })
+                .Build();
+
+        // ========================================================
+        // NOUVELLE COURSE
+        // ========================================================
+
+        _connection.On<RideNotification>(
+            "NewRide",
+            async ride =>
             {
                 try
                 {
-                    await _connection.DisposeAsync();
-                }
-                catch
-                {
-                    // Ignorer erreur de nettoyage
-                }
+                    Console.WriteLine(
+                        "==========================================");
 
-                _connection = null;
-            }
+                    Console.WriteLine(
+                        "🚕 NOUVELLE COURSE SIGNALR");
 
-            // ----------------------------------------------------
-            // URL SIGNALR
-            // ----------------------------------------------------
+                    Console.WriteLine(
+                        $"RideId : {ride.RideId}");
 
-            var hubUrl =
-                $"{ApiSettings.BaseUrl.TrimEnd('/')}/trackingHub";
+                    Console.WriteLine(
+                        $"DriverId : {ride.DriverId}");
 
-            await Alert(
-                "SIGNALR 3",
-                $"Hub URL :\n\n{hubUrl}");
+                    Console.WriteLine(
+                        $"Status : {ride.Status}");
 
-            // ----------------------------------------------------
-            // CRÉATION CONNEXION SIGNALR
-            //
-            // IMPORTANT :
-            // On utilise uniquement LongPolling
-            // pour éviter le problème WebSocket/Cloudflare.
-            // ----------------------------------------------------
+                    Console.WriteLine(
+                        $"Departure : {ride.Departure}");
 
-            _connection =
-                new HubConnectionBuilder()
-                    .WithUrl(
-                        hubUrl,
-                        options =>
-                        {
-                            options.Transports =
-                                HttpTransportType.LongPolling;
-                        })
-                    .WithAutomaticReconnect(
-                        new[]
-                        {
-                            TimeSpan.FromSeconds(0),
-                            TimeSpan.FromSeconds(2),
-                            TimeSpan.FromSeconds(5),
-                            TimeSpan.FromSeconds(10)
-                        })
-                    .Build();
+                    Console.WriteLine(
+                        $"Destination : {ride.Destination}");
 
-            // ====================================================
-            // RÉCEPTION NOUVELLE COURSE
-            // ====================================================
+                    Console.WriteLine(
+                        $"Price : {ride.Price}");
 
-            _connection.On<RideNotification>(
-                "NewRide",
-                async ride =>
-                {
-                    try
+                    Console.WriteLine(
+                        "==========================================");
+
+                    // ------------------------------------------------
+                    // IMPORTANT :
+                    // envoyer directement à DriverHomePage
+                    // ------------------------------------------------
+
+                    if (OnNewRideReceived == null)
                     {
                         Console.WriteLine(
-                            $"NOUVELLE COURSE : {ride.RideId}");
+                            "⚠️ OnNewRideReceived est NULL.");
 
-                        await Alert(
-                             "🚕 NOUVELLE COURSE",
-                                $"Course #{ride.RideId}\n\n" +
-                                $"📍 Départ : {ride.Departure}\n" +
-                                $"🏁 Destination : {ride.Destination}\n\n" +
-                                $"💰 Prix : {ride.Price:F0} Ar\n" +
-                                $"📏 Distance chauffeur : {ride.DistanceToDriver:F2} km\n" +
-                                $"👥 Passagers : {ride.Passengers}\n" +
-                                $"🛺 Type : {ride.RideType}");
+                        return;
+                    }
 
-                        // Envoyer la course à DriverHomePage
-                        if (OnNewRideReceived != null)
+                    await MainThread.InvokeOnMainThreadAsync(
+                        () =>
                         {
-                            await MainThread.InvokeOnMainThreadAsync(
-                                () =>
-                                {
-                                    OnNewRideReceived.Invoke(ride);
-                                });
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        Console.WriteLine(
-                            $"ERREUR NEW RIDE : {ex}");
-
-                        await Alert(
-                            "ERREUR NEW RIDE",
-                            ex.ToString());
-                    }
-                });
-
-            // ====================================================
-            // RECONNEXION
-            // ====================================================
-
-            _connection.Reconnecting +=
-                async error =>
+                            try
+                            {
+                                OnNewRideReceived.Invoke(ride);
+                            }
+                            catch (Exception ex)
+                            {
+                                Console.WriteLine(
+                                    $"ERREUR CALLBACK NEW RIDE : {ex}");
+                            }
+                        });
+                }
+                catch (Exception ex)
                 {
                     Console.WriteLine(
-                        $"SignalR reconnexion : {error}");
+                        $"ERREUR SIGNALR NEW RIDE : {ex}");
+                }
+            });
 
-                    await Alert(
-                        "SIGNALR",
-                        "Connexion perdue.\n\n" +
-                        "Tentative de reconnexion...");
-                };
+        // ========================================================
+        // RECONNEXION
+        // ========================================================
 
-            // ====================================================
-            // RECONNECTÉ
-            // ====================================================
+        _connection.Reconnecting +=
+            error =>
+            {
+                Console.WriteLine(
+                    "==========================================");
 
-            _connection.Reconnected +=
-                async connectionId =>
+                Console.WriteLine(
+                    "⚠️ SIGNALR RECONNECTING");
+
+                Console.WriteLine(
+                    error?.ToString()
+                    ?? "Erreur inconnue");
+
+                Console.WriteLine(
+                    "==========================================");
+
+                return Task.CompletedTask;
+            };
+
+        // ========================================================
+        // RECONNECTÉ
+        // ========================================================
+
+        _connection.Reconnected +=
+            async connectionId =>
+            {
+                Console.WriteLine(
+                    "==========================================");
+
+                Console.WriteLine(
+                    "✅ SIGNALR RECONNECTED");
+
+                Console.WriteLine(
+                    $"ConnectionId : {connectionId}");
+
+                Console.WriteLine(
+                    $"DriverId : {_driverId}");
+
+                Console.WriteLine(
+                    "==========================================");
+
+                try
                 {
-                    try
-                    {
-                        Console.WriteLine(
-                            $"SignalR reconnecté : {connectionId}");
-
-                        await Alert(
-                            "SIGNALR RECONNECTÉ",
-                            $"Connexion rétablie.\n\n" +
-                            $"ConnectionId : {connectionId}");
-
-                        if (_connection == null)
-                            return;
-
-                        // Réenregistrer le chauffeur
-                        await _connection.InvokeAsync(
-                            "RegisterDriver",
-                            driverId);
-
-                        await Alert(
-                            "REGISTER DRIVER",
-                            $"Driver {driverId} réenregistré.\n\n" +
-                            $"Groupe : driver-{driverId}");
-                    }
-                    catch (Exception ex)
-                    {
-                        Console.WriteLine(
-                            $"ERREUR REGISTER APRÈS RECONNECT : {ex}");
-
-                        await Alert(
-                            "ERREUR REGISTER",
-                            ex.ToString());
-                    }
-                };
-
-            // ====================================================
-            // FERMETURE
-            // ====================================================
-
-            _connection.Closed +=
-                async error =>
+                    await RegisterDriverAsync();
+                }
+                catch (Exception ex)
                 {
                     Console.WriteLine(
-                        $"SignalR fermé : {error}");
+                        $"ERREUR REGISTER RECONNECT : {ex}");
+                }
+            };
 
-                    await Alert(
-                        "SIGNALR FERMÉ",
-                        error?.ToString()
-                        ?? "Connexion fermée.");
-                };
+        // ========================================================
+        // FERMETURE
+        // ========================================================
 
-            // ====================================================
-            // START
-            // ====================================================
-
-            await Alert(
-                "SIGNALR 4",
-                "StartAsync() en cours...");
-
-            try
-            {
-                await _connection.StartAsync();
-
-                await Alert(
-                    "SIGNALR 5 ✅",
-                    $"Connexion réussie !\n\n" +
-                    $"State : {_connection.State}");
-            }
-            catch (OperationCanceledException ex)
+        _connection.Closed +=
+            error =>
             {
                 Console.WriteLine(
-                    $"SIGNALR OPERATION CANCELED : {ex}");
+                    "==========================================");
 
-                await Alert(
-                    "SIGNALR ANNULÉ",
-                    ex.ToString());
-
-                throw;
-            }
-            catch (Exception ex)
-            {
                 Console.WriteLine(
-                    $"SIGNALR START ERROR : {ex}");
+                    "❌ SIGNALR CLOSED");
 
-                await Alert(
-                    "SIGNALR START ERREUR",
-                    ex.ToString());
+                Console.WriteLine(
+                    error?.ToString()
+                    ?? "Connexion fermée.");
 
-                throw;
-            }
+                Console.WriteLine(
+                    "==========================================");
 
-            // ====================================================
-            // REGISTER DRIVER
-            // ====================================================
+                return Task.CompletedTask;
+            };
 
-            await Alert(
-                "SIGNALR 6",
-                $"RegisterDriver({driverId})...");
+        // ========================================================
+        // START
+        // ========================================================
 
-            await _connection.InvokeAsync(
-                "RegisterDriver",
-                driverId);
+        Console.WriteLine(
+            "SIGNALR : StartAsync()...");
 
-            await Alert(
-                "SIGNALR 7 ✅",
-                $"Chauffeur enregistré !\n\n" +
-                $"DriverId : {driverId}\n" +
-                $"Groupe : driver-{driverId}\n\n" +
-                "En attente d'une course.");
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine(
-                $"SIGNALR ERREUR : {ex}");
+        await _connection.StartAsync();
 
-            await Alert(
-                "❌ SIGNALR ERREUR",
-                ex.ToString());
+        Console.WriteLine(
+            "==========================================");
 
-            throw;
-        }
+        Console.WriteLine(
+            "✅ SIGNALR CONNECTÉ");
+
+        Console.WriteLine(
+            $"State : {_connection.State}");
+
+        Console.WriteLine(
+            "==========================================");
+
+        // ========================================================
+        // REGISTER DRIVER
+        // ========================================================
+
+        await RegisterDriverAsync();
     }
 
     // ============================================================
-    // STOP SIGNALR
+    // REGISTER DRIVER
+    // ============================================================
+
+    private async Task RegisterDriverAsync()
+    {
+        if (_connection == null)
+            throw new Exception(
+                "Connexion SignalR inexistante.");
+
+        if (_connection.State !=
+            HubConnectionState.Connected)
+        {
+            throw new Exception(
+                $"SignalR non connecté. State={_connection.State}");
+        }
+
+        Console.WriteLine(
+            "==========================================");
+
+        Console.WriteLine(
+            "REGISTER DRIVER");
+
+        Console.WriteLine(
+            $"DriverId : {_driverId}");
+
+        Console.WriteLine(
+            "==========================================");
+
+        await _connection.InvokeAsync(
+            "RegisterDriver",
+            _driverId);
+
+        Console.WriteLine(
+            $"✅ Driver {_driverId} enregistré dans SignalR.");
+
+        Console.WriteLine(
+            $"Groupe attendu : driver-{_driverId}");
+    }
+
+    // ============================================================
+    // STOP
     // ============================================================
 
     public async Task StopAsync()
@@ -351,9 +347,8 @@ public class DriverHubService
             if (_connection == null)
                 return;
 
-            await Alert(
-                "SIGNALR STOP",
-                "Fermeture de la connexion...");
+            Console.WriteLine(
+                "SIGNALR : fermeture...");
 
             await _connection.StopAsync();
 
@@ -361,27 +356,21 @@ public class DriverHubService
 
             _connection = null;
 
-            await Alert(
-                "SIGNALR STOP",
-                "Connexion fermée.");
+            Console.WriteLine(
+                "SIGNALR : connexion fermée.");
         }
         catch (Exception ex)
         {
             Console.WriteLine(
                 $"ERREUR SIGNALR STOP : {ex}");
-
-            await Alert(
-                "ERREUR SIGNALR STOP",
-                ex.ToString());
         }
     }
 
     // ============================================================
-    // ÉTAT CONNEXION
+    // ETAT
     // ============================================================
 
     public bool IsConnected =>
         _connection?.State ==
         HubConnectionState.Connected;
 }
-

@@ -4,6 +4,7 @@ using MoraTuk.API.Data;
 using MoraTuk.API.Models;
 using MoraTuk.API.Hubs;
 using Microsoft.AspNetCore.SignalR;
+using MoraTuk.API.Services;
 
 namespace MoraTuk.API.Controllers;
 
@@ -186,6 +187,119 @@ public class DriverController : ControllerBase
         {
             driverId = driver.Id,
             userId = driver.UserId
+        });
+    }
+    [HttpPost("{id}/sync-aika")]
+    public async Task<IActionResult> SyncAika(
+        int id,
+        [FromServices] AikaLocationService aikaService)
+    {
+        var driver = await _context.Drivers
+            .FindAsync(id);
+
+        if (driver == null)
+        {
+            return NotFound("Chauffeur introuvable");
+        }
+
+        if (driver.AikaDeviceId == null)
+        {
+            return BadRequest(
+                "Aucun GPS AIKA associé à ce chauffeur.");
+        }
+
+        var location =
+            await aikaService.GetTrackingAsync(driver.AikaDeviceId.Value,
+            driver.AikaUsername!,
+            driver.AikaPassword!);
+
+        if (location == null)
+        {
+            return BadRequest(
+                "AIKA n'a pas retourné de position.");
+        }
+
+        if (!location.IsGps)
+        {
+            return BadRequest(
+                "Le GPS AIKA n'a pas de position GPS valide.");
+        }
+
+        driver.Latitude =
+            location.Latitude;
+
+        driver.Longitude =
+            location.Longitude;
+
+        driver.LastUpdate =
+            DateTime.UtcNow;
+
+        await _context.SaveChangesAsync();
+
+        // ========================================================
+        // COURSE ACTIVE
+        // ========================================================
+
+        var ride =
+            await _context.Rides
+                .FirstOrDefaultAsync(x =>
+                    x.DriverId == id &&
+                    x.Status == "Accepted");
+
+        if (ride != null)
+        {
+            await _hub.Clients
+                .Group($"client-{ride.ClientId}")
+                .SendAsync(
+                    "DriverLocation",
+                    new
+                    {
+                        latitude =
+                            location.Latitude,
+
+                        longitude =
+                            location.Longitude
+                    });
+        }
+
+        return Ok(new
+        {
+            message = "Position AIKA synchronisée",
+
+            driverId = driver.Id,
+
+            aikaDeviceId =
+                location.DeviceId,
+
+            latitude =
+                location.Latitude,
+
+            longitude =
+                location.Longitude,
+
+            speed =
+                location.Speed,
+
+            course =
+                location.Course,
+
+            positionTime =
+                location.PositionTime,
+
+            gps =
+                location.IsGps,
+
+            stopped =
+                location.IsStopped,
+
+            battery =
+                location.Battery,
+
+            status =
+                location.Status,
+
+            lastUpdate =
+                driver.LastUpdate
         });
     }
         private double CalculateDistance(

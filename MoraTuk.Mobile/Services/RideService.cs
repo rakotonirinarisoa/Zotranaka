@@ -198,60 +198,224 @@ public class RideService
         }
     }
 
+    public class AcceptRideResult
+    {
+        public bool Success { get; set; }
+
+        public int StatusCode { get; set; }
+
+        public string Message { get; set; } = "";
+
+        public string ResponseBody { get; set; } = "";
+    }
+
+    public class RejectRideResult
+    {
+        public bool Success { get; set; }
+
+        public int StatusCode { get; set; }
+
+        public string Message { get; set; } = "";
+
+        public string ResponseBody { get; set; } = "";
+    }
+
+    public class PaymentStatusResult
+    {
+        public bool Success { get; set; }
+
+        public bool Confirmed { get; set; }
+
+        public bool Pending { get; set; }
+
+        public bool Failed { get; set; }
+
+        public int RideId { get; set; }
+
+        public int PaymentId { get; set; }
+
+        public string? RideStatus { get; set; }
+
+        public string? PaymentStatus { get; set; }
+
+        public string? MvolaStatus { get; set; }
+
+        public string? ServerCorrelationId { get; set; }
+
+        public string? Result { get; set; }
+
+        public string? Message { get; set; }
+    }
+
+
 
     // ============================================================
     // ACCEPTER COURSE
     // ============================================================
 
-    public async Task<bool> AcceptRideAsync(
+    public async Task<AcceptRideResult> AcceptRideAsync(
+    int rideId,
+    int driverId)
+        {
+            try
+            {
+                if (!ApiSettings.IsConfigured)
+                {
+                    return new AcceptRideResult
+                    {
+                        Success = false,
+                        Message =
+                            "ApiSettings.BaseUrl n'est pas configuré."
+                    };
+                }
+
+                var url =
+                    $"{BaseUrl}/api/Ride/{rideId}" +
+                    $"/accept?driverId={driverId}";
+
+                Console.WriteLine();
+                Console.WriteLine("====================================");
+                Console.WriteLine("ACCEPTATION COURSE MOBILE");
+                Console.WriteLine($"RideId   : {rideId}");
+                Console.WriteLine($"DriverId : {driverId}");
+                Console.WriteLine($"URL      : {url}");
+                Console.WriteLine("====================================");
+
+                var response =
+                    await _http.PutAsync(
+                        url,
+                        null);
+
+                var content =
+                    await response.Content
+                        .ReadAsStringAsync();
+
+                Console.WriteLine();
+                Console.WriteLine("========== ACCEPT RESPONSE ==========");
+                Console.WriteLine(
+                    $"HTTP : {(int)response.StatusCode}");
+
+                Console.WriteLine(
+                    $"BODY : {content}");
+
+                Console.WriteLine(
+                    "====================================");
+
+                return new AcceptRideResult
+                {
+                    Success = response.IsSuccessStatusCode,
+
+                    StatusCode =
+                        (int)response.StatusCode,
+
+                    ResponseBody =
+                        content,
+
+                    Message =
+                        response.IsSuccessStatusCode
+                            ? "Course acceptée."
+                            : $"Erreur HTTP {(int)response.StatusCode} - URL : {url}"
+                };
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(
+                    "========== ACCEPT EXCEPTION ==========");
+
+                Console.WriteLine(ex.ToString());
+
+                Console.WriteLine(
+                    "======================================");
+
+                return new AcceptRideResult
+                {
+                    Success = false,
+
+                    StatusCode = 0,
+
+                    Message = ex.Message,
+
+                    ResponseBody = ex.ToString()
+                };
+            }
+        }
+    // ============================================================
+// REFUSER COURSE
+// ============================================================
+
+// ============================================================
+// REFUSER UNE COURSE
+// ============================================================
+
+    public async Task<RejectRideResult> RejectRideAsync(
         int rideId,
         int driverId)
     {
         try
         {
-            var url =
-                $"{BaseUrl}/api/Ride/{rideId}" +
-                $"/accept?driverId={driverId}";
-
-            Console.WriteLine(
-                $"ACCEPT RIDE URL : {url}");
-
-            var response =
-                await _http.PutAsync(
-                    url,
-                    null);
-
-            var content =
-                await response.Content
-                    .ReadAsStringAsync();
-
-            Console.WriteLine(
-                $"ACCEPT RIDE STATUS : " +
-                $"{(int)response.StatusCode}");
-
-            Console.WriteLine(
-                $"ACCEPT RIDE RESPONSE : " +
-                content);
-
-            if (!response.IsSuccessStatusCode)
+            if (!ApiSettings.IsConfigured)
             {
-                Console.WriteLine(
-                    $"ACCEPT RIDE ERROR : {content}");
-
-                return false;
+                return new RejectRideResult
+                {
+                    Success = false,
+                    StatusCode = 0,
+                    Message = "ApiSettings.BaseUrl n'est pas configuré."
+                };
             }
 
-            return true;
+            var url =
+                $"{BaseUrl}/api/Ride/{rideId}/reject?driverId={driverId}";
+
+            Console.WriteLine();
+            Console.WriteLine("====================================");
+            Console.WriteLine("REFUS COURSE MOBILE");
+            Console.WriteLine($"RideId   : {rideId}");
+            Console.WriteLine($"DriverId : {driverId}");
+            Console.WriteLine($"URL      : {url}");
+            Console.WriteLine("====================================");
+
+            var response = await _http.PutAsync(url, null);
+
+            var content =
+                await response.Content.ReadAsStringAsync();
+
+            Console.WriteLine(
+                $"REJECT STATUS : {(int)response.StatusCode}");
+
+            Console.WriteLine(
+                $"REJECT RESPONSE : {content}");
+
+            return new RejectRideResult
+            {
+                Success = response.IsSuccessStatusCode,
+
+                StatusCode =
+                    (int)response.StatusCode,
+
+                Message =
+                    response.IsSuccessStatusCode
+                        ? "Course refusée."
+                        : $"Erreur HTTP {(int)response.StatusCode}",
+
+                ResponseBody = content
+            };
         }
         catch (Exception ex)
         {
             Console.WriteLine(
-                $"ERREUR AcceptRideAsync : {ex}");
+                "========== REJECT EXCEPTION ==========");
 
-            return false;
+            Console.WriteLine(ex.ToString());
+
+            return new RejectRideResult
+            {
+                Success = false,
+                StatusCode = 0,
+                Message = ex.Message,
+                ResponseBody = ex.ToString()
+            };
         }
     }
-
 
     // ============================================================
     // TERMINER COURSE
@@ -315,6 +479,157 @@ public class RideService
                 $"ERREUR CompleteRideAsync : {ex}");
 
             return false;
+        }
+    }
+    // ============================================================
+    // VERIFIER STATUT PAIEMENT MVOLA
+    // ============================================================
+
+    public async Task<PaymentStatusResult?> GetPaymentStatusAsync(
+        int rideId)
+    {
+        try
+        {
+            if (!ApiSettings.IsConfigured)
+            {
+                throw new Exception(
+                    "ApiSettings.BaseUrl n'est pas configuré.");
+            }
+
+            var url =
+                $"{BaseUrl}/api/Ride/{rideId}/payment-status";
+
+            Console.WriteLine();
+            Console.WriteLine("====================================");
+            Console.WriteLine("VERIFICATION PAIEMENT MVOLA");
+            Console.WriteLine($"RideId : {rideId}");
+            Console.WriteLine($"URL    : {url}");
+            Console.WriteLine("====================================");
+
+            var response =
+                await _http.GetAsync(url);
+
+            var content =
+                await response.Content
+                    .ReadAsStringAsync();
+
+            Console.WriteLine(
+                $"PAYMENT STATUS HTTP : " +
+                $"{(int)response.StatusCode}");
+
+            Console.WriteLine(
+                $"PAYMENT STATUS BODY : " +
+                content);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                Console.WriteLine(
+                    $"ERREUR PAYMENT STATUS : {content}");
+
+                return new PaymentStatusResult
+                {
+                    Success = false,
+                    Message = content
+                };
+            }
+
+            if (string.IsNullOrWhiteSpace(content))
+            {
+                return new PaymentStatusResult
+                {
+                    Success = false,
+                    Message =
+                        "Réponse paiement vide."
+                };
+            }
+
+            var result =
+                JsonSerializer.Deserialize<PaymentStatusResult>(
+                    content,
+                    new JsonSerializerOptions
+                    {
+                        PropertyNameCaseInsensitive = true
+                    });
+
+            return result;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(
+                $"ERREUR GetPaymentStatusAsync : {ex}");
+
+            return new PaymentStatusResult
+            {
+                Success = false,
+                Message = ex.Message
+            };
+        }
+    }
+    // ============================================================
+    // RECUPERER UNE COURSE
+    // ============================================================
+
+    public async Task<RideResponse?> GetRideAsync(int rideId)
+    {
+        try
+        {
+            if (!ApiSettings.IsConfigured)
+            {
+                throw new Exception(
+                    "ApiSettings.BaseUrl n'est pas configuré.");
+            }
+
+            var url =
+                $"{BaseUrl}/api/Ride/{rideId}";
+
+            Console.WriteLine();
+            Console.WriteLine("====================================");
+            Console.WriteLine("RECUPERATION COURSE");
+            Console.WriteLine($"RideId : {rideId}");
+            Console.WriteLine($"URL    : {url}");
+            Console.WriteLine("====================================");
+
+            var response =
+                await _http.GetAsync(url);
+
+            var content =
+                await response.Content.ReadAsStringAsync();
+
+            Console.WriteLine(
+                $"GET RIDE STATUS : {(int)response.StatusCode}");
+
+            Console.WriteLine(
+                $"GET RIDE RESPONSE : {content}");
+
+            if (!response.IsSuccessStatusCode)
+            {
+                Console.WriteLine(
+                    $"ERREUR GET RIDE : {content}");
+
+                return null;
+            }
+
+            if (string.IsNullOrWhiteSpace(content))
+            {
+                return null;
+            }
+
+            var result =
+                JsonSerializer.Deserialize<RideResponse>(
+                    content,
+                    new JsonSerializerOptions
+                    {
+                        PropertyNameCaseInsensitive = true
+                    });
+
+            return result;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(
+                $"ERREUR GetRideAsync : {ex}");
+
+            return null;
         }
     }
 }
