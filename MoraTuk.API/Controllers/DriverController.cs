@@ -190,40 +190,64 @@ public class DriverController : ControllerBase
         });
     }
     [HttpPost("{id}/sync-aika")]
-    public async Task<IActionResult> SyncAika(
-        int id,
-        [FromServices] AikaLocationService aikaService)
+public async Task<IActionResult> SyncAika(
+    int id,
+    [FromServices] AikaLocationService aikaService)
+{
+    var driver = await _context.Drivers
+        .FindAsync(id);
+
+    if (driver == null)
     {
-        var driver = await _context.Drivers
-            .FindAsync(id);
+        return NotFound(
+            "Chauffeur introuvable");
+    }
 
-        if (driver == null)
-        {
-            return NotFound("Chauffeur introuvable");
-        }
+    // ============================================================
+    // VERIFICATION GPS AIKA
+    // ============================================================
 
-        if (driver.AikaDeviceId == null)
-        {
-            return BadRequest(
-                "Aucun GPS AIKA associé à ce chauffeur.");
-        }
+    if (driver.AikaDeviceId == null)
+    {
+        return BadRequest(
+            "Aucun GPS AIKA associé à ce chauffeur.");
+    }
+
+    if (string.IsNullOrWhiteSpace(
+            driver.AikaUsername))
+    {
+        return BadRequest(
+            "Username AIKA manquant.");
+    }
+
+    if (string.IsNullOrWhiteSpace(
+            driver.AikaPassword))
+    {
+        return BadRequest(
+            "Password AIKA manquant.");
+    }
+
+    try
+    {
+        // ========================================================
+        // AIKA -> GetTracking
+        // ========================================================
 
         var location =
-            await aikaService.GetTrackingAsync(driver.AikaDeviceId.Value,
-            driver.AikaUsername!,
-            driver.AikaPassword!);
+            await aikaService.GetTrackingAsync(
+                driver.AikaDeviceId.Value,
+                driver.AikaUsername,
+                driver.AikaPassword);
 
         if (location == null)
         {
             return BadRequest(
-                "AIKA n'a pas retourné de position.");
+                "AIKA n'a pas retourné de position GPS valide.");
         }
 
-        if (!location.IsGps)
-        {
-            return BadRequest(
-                "Le GPS AIKA n'a pas de position GPS valide.");
-        }
+        // ========================================================
+        // MISE A JOUR DATABASE
+        // ========================================================
 
         driver.Latitude =
             location.Latitude;
@@ -262,14 +286,25 @@ public class DriverController : ControllerBase
                     });
         }
 
+        // ========================================================
+        // REPONSE
+        // ========================================================
+
         return Ok(new
         {
-            message = "Position AIKA synchronisée",
+            success = true,
 
-            driverId = driver.Id,
+            message =
+                "Position AIKA synchronisée",
+
+            driverId =
+                driver.Id,
+
+            vehicleNumber =
+                driver.VehicleNumber,
 
             aikaDeviceId =
-                location.DeviceId,
+                driver.AikaDeviceId,
 
             latitude =
                 location.Latitude,
@@ -302,6 +337,103 @@ public class DriverController : ControllerBase
                 driver.LastUpdate
         });
     }
+    catch (Exception ex)
+    {
+        Console.WriteLine(
+            $"AIKA SYNC ERROR DRIVER {id}: {ex}");
+
+        return StatusCode(
+            500,
+            new
+            {
+                success = false,
+
+                message =
+                    "Erreur lors de la synchronisation AIKA.",
+
+                error =
+                    ex.Message
+            });
+    }
+}
+
+    [HttpGet("fleet-locations")]
+    public async Task<IActionResult> GetFleetLocations()
+    {
+        var drivers = await _context.Drivers
+            .Where(x => x.Latitude != 0 && x.Longitude != 0)
+            .Select(x => new
+            {
+                driverId = x.Id,
+                vehicleNumber = x.VehicleNumber,
+                latitude = x.Latitude,
+                longitude = x.Longitude,
+                isAvailable = x.IsAvailable,
+                lastUpdate = x.LastUpdate,
+                speed = AikaTrackingWorker.GetDriverSpeed(x.Id)
+            })
+            .ToListAsync();
+
+        return Ok(new
+        {
+            success = true,
+            total = drivers.Count,
+            drivers
+        });
+    }
+
+    [HttpPost("aika-device-info")]
+    public async Task<IActionResult> GetAikaDeviceInfo(
+        string username,
+        string password,
+        [FromServices] AikaLocationService aikaService)
+    {
+        try
+        {
+            var device =
+                await aikaService.LoginAndGetDeviceInfoAsync(
+                    username,
+                    password);
+
+            if (device == null)
+            {
+                return BadRequest(
+                    "AIKA n'a retourné aucun appareil.");
+            }
+
+            return Ok(new
+            {
+                success = true,
+
+                deviceId =
+                    device.DeviceId,
+
+                deviceName =
+                    device.DeviceName,
+
+                model =
+                    device.Model,
+
+                serialNumber =
+                    device.SerialNumber,
+
+                imei =
+                    device.Imei,
+
+                key =
+                    device.Key
+            });
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new
+            {
+                success = false,
+                message = ex.Message
+            });
+        }
+    }
+    
         private double CalculateDistance(
         double lat1,
         double lon1,

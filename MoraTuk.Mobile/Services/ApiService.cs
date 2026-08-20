@@ -283,4 +283,87 @@ public class ApiService
 
         return driver.DriverId;
     }
+   public async Task<List<FleetLocationDto>> GetFleetLocationsAsync()
+{
+    try
+    {
+        var url =
+            $"{BaseUrl}/api/Driver/fleet-locations";
+
+        var response =
+            await _http.GetAsync(url);
+
+        var body =
+            await response.Content.ReadAsStringAsync();
+
+        if (!response.IsSuccessStatusCode)
+        {
+            await MainThread.InvokeOnMainThreadAsync(() =>
+                Application.Current!.MainPage!.DisplayAlert(
+                    "Erreur flotte",
+                    $"HTTP {(int)response.StatusCode}\n\n{body}",
+                    "OK"));
+
+            throw new Exception(
+                $"Erreur flotte : {(int)response.StatusCode}\n{body}");
+        }
+
+        var result =
+            JsonSerializer.Deserialize<FleetLocationsResponse>(
+                body,
+                new JsonSerializerOptions
+                {
+                    PropertyNameCaseInsensitive = true
+                });
+
+        if (result == null)
+        {
+            await MainThread.InvokeOnMainThreadAsync(() =>
+                Application.Current!.MainPage!.DisplayAlert(
+                    "FLOTTE",
+                    "Result est NULL",
+                    "OK"));
+
+            return new List<FleetLocationDto>();
+        }
+
+        var drivers =
+            result.Drivers ??
+            new List<FleetLocationDto>();
+
+        // ========================================================
+        // DEBUG SPEED
+        // ========================================================
+
+        var speedInfo =
+            string.Join(
+                "\n\n",
+                drivers.Select(d =>
+                    $"DriverId : {d.DriverId}\n" +
+                    $"Vehicle  : {d.VehicleNumber}\n" +
+                    $"Latitude : {d.Latitude}\n" +
+                    $"Longitude: {d.Longitude}\n" +
+                    $"Speed    : {d.Speed} km/h"));
+
+        // await MainThread.InvokeOnMainThreadAsync(() =>
+        //     Application.Current!.MainPage!.DisplayAlert(
+        //         "SPEED FLOTTE",
+        //         string.IsNullOrWhiteSpace(speedInfo)
+        //             ? "Aucun véhicule reçu."
+        //             : speedInfo,
+        //         "OK"));
+
+        return drivers;
+    }
+    catch (Exception ex)
+    {
+        await MainThread.InvokeOnMainThreadAsync(() =>
+            Application.Current!.MainPage!.DisplayAlert(
+                "FLEET LOCATIONS ERROR",
+                ex.Message,
+                "OK"));
+
+        throw;
+    }
+}
 }

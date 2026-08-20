@@ -52,6 +52,12 @@ build_metadata.AdditionalFiles.ManifestResourceName = MoraTuk.Mobile.Pages.Login
 build_metadata.AdditionalFiles.TargetPath = Pages\LoginPage.xaml
 build_metadata.AdditionalFiles.RelativePath = Pages\LoginPage.xaml
 
+[D:/MoraTUK/moratuk.mobile/Pages/OwnerHomePage.xaml]
+build_metadata.AdditionalFiles.GenKind = Xaml
+build_metadata.AdditionalFiles.ManifestResourceName = MoraTuk.Mobile.Pages.OwnerHomePage.xaml
+build_metadata.AdditionalFiles.TargetPath = Pages\OwnerHomePage.xaml
+build_metadata.AdditionalFiles.RelativePath = Pages\OwnerHomePage.xaml
+
 [D:/MoraTUK/moratuk.mobile/Resources/Styles/Colors.xaml]
 build_metadata.AdditionalFiles.GenKind = Xaml
 build_metadata.AdditionalFiles.ManifestResourceName = MoraTuk.Mobile.Resources.Styles.Colors.xaml

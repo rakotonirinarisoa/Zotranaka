@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using MoraTuk.API.Data;
 using MoraTuk.API.Hubs;
 using MoraTuk.API.Models;
+using System.Collections.Concurrent;
 
 namespace MoraTuk.API.Services;
 
@@ -11,6 +12,7 @@ public class AikaTrackingWorker : BackgroundService
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly ILogger<AikaTrackingWorker> _logger;
     private readonly IConfiguration _configuration;
+    private static readonly ConcurrentDictionary<int, double> DriverSpeeds = new();
 
     public AikaTrackingWorker(
         IServiceScopeFactory scopeFactory,
@@ -42,6 +44,10 @@ public class AikaTrackingWorker : BackgroundService
             {
                 await SynchronizeDrivers(stoppingToken);
             }
+            catch (OperationCanceledException)
+            {
+                break;
+            }
             catch (Exception ex)
             {
                 _logger.LogError(
@@ -65,6 +71,10 @@ public class AikaTrackingWorker : BackgroundService
             "AIKA Tracking Worker arrêté.");
     }
 
+    // ============================================================
+    // SYNCHRONISER TOUS LES CHAUFFEURS
+    // ============================================================
+
     private async Task SynchronizeDrivers(
         CancellationToken cancellationToken)
     {
@@ -83,9 +93,15 @@ public class AikaTrackingWorker : BackgroundService
             scope.ServiceProvider
                 .GetRequiredService<IHubContext<TrackingHub>>();
 
-        var drivers = await context.Drivers
-            .Where(x => x.AikaDeviceId != null)
-            .ToListAsync(cancellationToken);
+        var drivers =
+            await context.Drivers
+                .Where(x =>
+                    x.AikaDeviceId != null &&
+                    !string.IsNullOrWhiteSpace(
+                        x.AikaUsername) &&
+                    !string.IsNullOrWhiteSpace(
+                        x.AikaPassword))
+                .ToListAsync(cancellationToken);
 
         if (drivers.Count == 0)
         {
@@ -95,6 +111,12 @@ public class AikaTrackingWorker : BackgroundService
             return;
         }
 
+        _logger.LogInformation(
+            "AIKA : {Count} chauffeur(s) à synchroniser.",
+            drivers.Count);
+
+        // IMPORTANT :
+        // Chaque chauffeur possède son propre compte AIKA.
         foreach (var driver in drivers)
         {
             if (cancellationToken.IsCancellationRequested)
@@ -120,6 +142,10 @@ public class AikaTrackingWorker : BackgroundService
         }
     }
 
+    // ============================================================
+    // SYNCHRONISER UN CHAUFFEUR
+    // ============================================================
+
     private async Task SynchronizeDriver(
         AppDbContext context,
         AikaLocationService aikaService,
@@ -133,13 +159,10 @@ public class AikaTrackingWorker : BackgroundService
         var deviceId =
             driver.AikaDeviceId.Value;
 
-        _logger.LogDebug(
-            "Synchronisation AIKA : Driver={DriverId}, Device={DeviceId}",
-            driver.Id,
-            deviceId);
-
-        if (string.IsNullOrWhiteSpace(driver.AikaUsername) ||
-         string.IsNullOrWhiteSpace(driver.AikaPassword))
+        if (string.IsNullOrWhiteSpace(
+                driver.AikaUsername) ||
+            string.IsNullOrWhiteSpace(
+                driver.AikaPassword))
         {
             _logger.LogWarning(
                 "Identifiants AIKA manquants pour Driver={DriverId}, Device={DeviceId}",
@@ -148,11 +171,22 @@ public class AikaTrackingWorker : BackgroundService
 
             return;
         }
+
+        _logger.LogInformation(
+            "AIKA : synchronisation Driver={DriverId}, Device={DeviceId}, Username={Username}",
+            driver.Id,
+            deviceId,
+            driver.AikaUsername);
+
+        // ========================================================
+        // APPEL AIKA
+        // ========================================================
+
         var location =
             await aikaService.GetTrackingAsync(
                 deviceId,
-                driver.AikaUsername!,
-                driver.AikaPassword!);
+                driver.AikaUsername,
+                driver.AikaPassword);
 
         if (location == null)
         {
@@ -173,6 +207,14 @@ public class AikaTrackingWorker : BackgroundService
 
             return;
         }
+        // ========================================================
+        // SAUVEGARDER LA VITESSE AIKA
+        // ========================================================
+        DriverSpeeds[driver.Id] = location.Speed;
+
+        // ========================================================
+        // SAUVEGARDE POSITION
+        // ========================================================
 
         driver.Latitude =
             location.Latitude;
@@ -187,8 +229,14 @@ public class AikaTrackingWorker : BackgroundService
             cancellationToken);
 
         _logger.LogInformation(
-            "GPS AIKA synchronisé : Driver={DriverId}, Lat={Latitude}, Lng={Longitude}, Speed={Speed}",
+            "GPS AIKA synchronisé : " +
+            "Driver={DriverId}, " +
+            "Device={DeviceId}, " +
+            "Lat={Latitude}, " +
+            "Lng={Longitude}, " +
+            "Speed={Speed}",
             driver.Id,
+            location.DeviceId,
             location.Latitude,
             location.Longitude,
             location.Speed);
@@ -197,12 +245,13 @@ public class AikaTrackingWorker : BackgroundService
         // COURSE ACTIVE
         // ========================================================
 
-        var ride = await context.Rides
-            .FirstOrDefaultAsync(
-                x =>
-                    x.DriverId == driver.Id &&
-                    x.Status == "Accepted",
-                cancellationToken);
+        var ride =
+            await context.Rides
+                .FirstOrDefaultAsync(
+                    x =>
+                        x.DriverId == driver.Id &&
+                        x.Status == "Accepted",
+                    cancellationToken);
 
         if (ride == null)
             return;
@@ -227,5 +276,13 @@ public class AikaTrackingWorker : BackgroundService
                     stopped = location.IsStopped
                 },
                 cancellationToken);
+    }
+    public static double GetDriverSpeed(int driverId)
+    {
+        return DriverSpeeds.TryGetValue(
+            driverId,
+            out var speed)
+            ? speed
+            : 0;
     }
 }

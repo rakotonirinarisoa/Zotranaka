@@ -112,6 +112,26 @@ public partial class LoginPage : ContentPage
                 result.User.Role);
 
             // ====================================================
+            // OWNER / PROPRIÉTAIRE
+            // ====================================================
+
+            if (result.User.Role == "Owner")
+            {
+                await DisplayAlert(
+                    "Connexion propriétaire",
+                    $"UserId : {result.User.Id}\n" +
+                    $"Role : {result.User.Role}",
+                    "OK");
+
+                Application.Current!.MainPage =
+                    new NavigationPage(
+                        new OwnerHomePage(
+                            _apiService));
+
+                return;
+            }
+
+            // ====================================================
             // DRIVER
             // ====================================================
 
@@ -138,13 +158,15 @@ public partial class LoginPage : ContentPage
                         new DriverHomePage(
                             _driverHubService,
                             driverId));
+
+                return;
             }
 
             // ====================================================
             // CLIENT
             // ====================================================
 
-            else
+            if (result.User.Role == "Client")
             {
                 await DisplayAlert(
                     "Connexion client",
@@ -164,7 +186,18 @@ public partial class LoginPage : ContentPage
                 Application.Current!.MainPage =
                     new NavigationPage(
                         clientPage);
+
+                return;
             }
+
+            // ====================================================
+            // RÔLE INCONNU
+            // ====================================================
+
+            await DisplayAlert(
+                "Erreur",
+                $"Rôle utilisateur inconnu : {result.User.Role}",
+                "OK");
         }
         catch (Exception ex)
         {

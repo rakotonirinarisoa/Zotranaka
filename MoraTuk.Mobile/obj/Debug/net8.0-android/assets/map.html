@@ -2,196 +2,1029 @@
 <html lang="fr">
 <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-    <title>MoraTuk Map</title>
 
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+
+    <title>MoraTuk - Suivi flotte</title>
+
+    <link rel="stylesheet"
+          href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
     <style>
-        html, body, #map {
+
+        html,
+        body,
+        #map {
             margin: 0;
             padding: 0;
             width: 100%;
             height: 100vh;
         }
 
-        .marker-pin {
-            width: 26px;
-            height: 26px;
-            border-radius: 50% 50% 50% 0;
-            transform: rotate(-45deg);
-            border: 2px solid white;
-            box-shadow: 0 1px 4px rgba(0,0,0,0.4);
+        /* ============================================================
+           VEHICULE
+           ============================================================ */
+
+        .vehicle-icon {
+            width: 42px;
+            height: 42px;
+
+            display: flex;
+            align-items: center;
+            justify-content: center;
+
+            font-size: 25px;
+
+            background: white;
+
+            border-radius: 50%;
+
+            border: 3px solid #00A86B;
+
+            box-shadow:
+                0 2px 8px rgba(0,0,0,0.35);
         }
-        .marker-client { background: #00A86B; }
-        .marker-driver { background: #FFC107; }
-        .marker-destination { background: #E53935; }
+
+        .vehicle-available {
+            border-color: #00A86B;
+        }
+
+        .vehicle-busy {
+            border-color: #E53935;
+        }
+
+        .vehicle-inactive {
+            border-color: #9E9E9E;
+            opacity: 0.65;
+        }
+
+        /* ============================================================
+           CLIENT
+           ============================================================ */
 
         .blue-dot-wrapper {
             position: relative;
+
             width: 40px;
             height: 40px;
         }
+
         .blue-dot {
             position: absolute;
+
             top: 11px;
             left: 11px;
+
             width: 18px;
             height: 18px;
+
             background: #4285F4;
+
             border: 3px solid white;
+
             border-radius: 50%;
-            box-shadow: 0 0 8px rgba(66,133,244,0.6);
+
+            box-shadow:
+                0 0 8px rgba(66,133,244,0.6);
+
             z-index: 2;
         }
+
         .blue-dot-pulse {
             position: absolute;
+
             top: 0;
             left: 0;
+
             width: 40px;
             height: 40px;
+
             background: rgba(66,133,244,0.25);
+
             border-radius: 50%;
+
             animation: pulse 2s infinite;
+
             z-index: 1;
         }
+
         @keyframes pulse {
-            0% { transform: scale(0.6); opacity: 1; }
-            100% { transform: scale(1.5); opacity: 0; }
+
+            0% {
+                transform: scale(0.6);
+                opacity: 1;
+            }
+
+            100% {
+                transform: scale(1.5);
+                opacity: 0;
+            }
         }
+
     </style>
 </head>
+
 <body>
-    <div id="map"></div>
 
-    <script>
-        const OSRM_URL = "https://router.project-osrm.org/route/v1/driving";
-        const DEFAULT_CENTER = [-18.8792, 47.5079]; // Antananarivo [lat, lon] - vue par defaut avant GPS
+<div id="map"></div>
 
-        let map = null;
-        let clientMarker = null;
-        let driverMarker = null;
-        let destinationMarker = null;
-        let routeLine = null;
-        let blueDotIcon = null;
+<script>
 
-        // ============================================================
-        // INITIALISATION UNIQUE DE LA CARTE
-        // (appelee une seule fois via window "load")
-        // ============================================================
-        function initMap() {
-            if (map) {
-                console.log("MAP : deja initialisee, initMap ignore.");
-                return;
+    // ============================================================
+    // CONFIGURATION
+    // ============================================================
+
+    const DEFAULT_CENTER = [-18.8792, 47.5079];
+
+    // ============================================================
+    // VARIABLES
+    // ============================================================
+
+    let map = null;
+
+    let clientMarker = null;
+
+    let destinationMarker = null;
+
+    let routeLine = null;
+
+    let blueDotIcon = null;
+
+    // ============================================================
+    // VEHICULES
+    //
+    // vehicleMarkers["1"] = marker
+    // vehicleMarkers["2"] = marker
+    // ============================================================
+
+    let vehicleMarkers = {};
+
+    // ============================================================
+    // INITIALISATION CARTE
+    // ============================================================
+
+    function initMap() {
+
+        if (map) {
+
+            console.log(
+                "MAP : déjà initialisée."
+            );
+
+            return;
+        }
+
+        console.log(
+            "MAP : initialisation..."
+        );
+
+        map = L.map(
+            "map",
+            {
+                zoomControl: true
             }
+        ).setView(
+            DEFAULT_CENTER,
+            13
+        );
 
-            map = L.map("map", { zoomControl: true }).setView(DEFAULT_CENTER, 13);
+        // ========================================================
+        // MAPTILER
+        // ========================================================
 
-            // Remplace YOUR_MAPTILER_KEY par ta cle gratuite (maptiler.com)
-            L.tileLayer("https://api.maptiler.com/maps/streets-v2/{z}/{x}/{y}.png?key=bENyXuimuS7MUCyeXugw", {
+        // ========================================================
+        // OPENSTREETMAP
+        // ========================================================
+
+       L.tileLayer(
+            "https://api.maptiler.com/maps/streets-v2/{z}/{x}/{y}.png?key=bENyXuimuS7MUCyeXugw",
+            {
                 maxZoom: 20,
-                attribution: "&copy; OpenStreetMap contributors &copy; MapTiler"
-            }).addTo(map);
+                attribution:
+                    "&copy; OpenStreetMap contributors &copy; MapTiler"
+            }
+        ).addTo(map);
 
-            blueDotIcon = L.divIcon({
+        // ========================================================
+        // ICONE CLIENT
+        // ========================================================
+
+        blueDotIcon =
+            L.divIcon(
+                {
+                    className: "",
+
+                    html:
+                        '<div class="blue-dot-wrapper">' +
+                        '<div class="blue-dot-pulse"></div>' +
+                        '<div class="blue-dot"></div>' +
+                        '</div>',
+
+                    iconSize:
+                        [40, 40],
+
+                    iconAnchor:
+                        [20, 20]
+                }
+            );
+
+        // ========================================================
+        // REDIMENSIONNEMENT
+        // ========================================================
+
+        setTimeout(
+            () => {
+
+                if (map) {
+
+                    map.invalidateSize();
+
+                }
+
+            },
+            300
+        );
+
+        console.log(
+            "MAP : initialisation terminée."
+        );
+
+        // ========================================================
+        // SIGNAL C#
+        // ========================================================
+
+        window.location.href =
+            "https://mapready/signal";
+    }
+
+    // ============================================================
+    // ICONE VEHICULE
+    // ============================================================
+
+    function vehicleIcon(
+        isAvailable
+    ) {
+
+        let cssClass =
+            "vehicle-available";
+
+        if (isAvailable === false) {
+
+            cssClass =
+                "vehicle-busy";
+        }
+
+        return L.divIcon(
+            {
                 className: "",
-                html: '<div class="blue-dot-wrapper"><div class="blue-dot-pulse"></div><div class="blue-dot"></div></div>',
-                iconSize: [40, 40],
-                iconAnchor: [20, 20]
-            });
 
-            console.log("MAP : initialisation terminee.");
+                html:
+                    `<div class="vehicle-icon ${cssClass}">
+                        🛺
+                    </div>`,
 
-            // Signal vers C# : la carte est VRAIMENT prete
-            // (Leaflet charge, tuiles configurees, icones definies)
-            window.location.href = "https://mapready/signal";
-        }
+                iconSize:
+                    [42, 42],
 
-        function pinIcon(cssClass) {
-            return L.divIcon({
-                className: "",
-                html: `<div class="marker-pin ${cssClass}"></div>`,
-                iconSize: [26, 26],
-                iconAnchor: [13, 26]
-            });
-        }
+                iconAnchor:
+                    [21, 21],
 
-        function centerMap(lat, lon, zoom) {
-            if (!map) {
-                console.log("MAP : centerMap appele avant initialisation.");
-                return;
+                popupAnchor:
+                    [0, -21]
             }
-            map.setView([lat, lon], zoom || 15);
-            map.invalidateSize();
+        );
+    }
+
+    // ============================================================
+    // AFFICHER / METTRE A JOUR UN VEHICULE
+    // ============================================================
+
+    function setVehicle(
+        driverId,
+        latitude,
+        longitude,
+        vehicleNumber,
+        isAvailable,
+        speed
+    ) {
+
+        if (!map) {
+
+            console.log(
+                "MAP : setVehicle appelée avant initialisation."
+            );
+
+            return;
         }
 
-        function setClientMarker(lat, lon) {
-            if (!map) {
-                console.log("MAP : setClientMarker appele avant initialisation.");
-                return;
-            }
+        // --------------------------------------------------------
+        // DRIVER ID
+        // --------------------------------------------------------
 
-            if (clientMarker) {
-                clientMarker.setLatLng([lat, lon]);
-            } else {
-                clientMarker = L.marker([lat, lon], { icon: blueDotIcon }).addTo(map);
-            }
+        if (
+            driverId === null ||
+            driverId === undefined
+        ) {
+
+            console.log(
+                "MAP : driverId invalide."
+            );
+
+            return;
         }
 
-        function setDriverMarker(lat, lon) {
-            if (!map) return;
-            if (driverMarker) map.removeLayer(driverMarker);
-            driverMarker = L.marker([lat, lon], { icon: pinIcon("marker-driver") }).addTo(map);
+        // --------------------------------------------------------
+        // COORDONNEES
+        // --------------------------------------------------------
+
+        const lat =
+            Number(latitude);
+
+        const lon =
+            Number(longitude);
+
+        if (
+            !Number.isFinite(lat) ||
+            !Number.isFinite(lon)
+        ) {
+
+            console.log(
+                "MAP : coordonnées invalides :",
+                latitude,
+                longitude
+            );
+
+            return;
         }
 
-        function setDestinationMarker(lat, lon) {
-            if (!map) return;
-            if (destinationMarker) map.removeLayer(destinationMarker);
-            destinationMarker = L.marker([lat, lon], { icon: pinIcon("marker-destination") }).addTo(map);
+        // --------------------------------------------------------
+        // PAS DE POSITION GPS
+        // --------------------------------------------------------
+
+        if (
+            lat === 0 ||
+            lon === 0
+        ) {
+
+            console.log(
+                "MAP : véhicule " +
+                driverId +
+                " sans position GPS."
+            );
+
+            return;
         }
 
-        function clearDestinationMarker() {
-            if (destinationMarker) {
-                map.removeLayer(destinationMarker);
-                destinationMarker = null;
-            }
-            clearRoute();
+        // --------------------------------------------------------
+        // CLE DU VEHICULE
+        // --------------------------------------------------------
+
+        const key =
+            String(driverId);
+
+        const statusText =
+            isAvailable === true
+                ? "Disponible"
+                : "Occupé";
+
+        const numberText =
+            vehicleNumber ||
+            "Non renseigné";
+
+        const speedValue =
+            Number(speed);
+
+        const speedText =
+            Number.isFinite(speedValue)
+                ? `${speedValue.toFixed(1)} km/h`
+                : "0.0 km/h";
+
+        // ========================================================
+        // VEHICULE EXISTANT
+        // ========================================================
+
+        if (
+            vehicleMarkers[key]
+        ) {
+
+            vehicleMarkers[key]
+                .setLatLng(
+                    [
+                        lat,
+                        lon
+                    ]
+                );
+
+            vehicleMarkers[key]
+                .setIcon(
+                    vehicleIcon(
+                        isAvailable
+                    )
+                );
+
+            vehicleMarkers[key]
+                .setPopupContent(
+                    `
+                    <div style="min-width:180px">
+
+                        <strong>
+                            🛺 ${numberText}
+                        </strong>
+
+                        <br />
+
+                        <span>
+                            Chauffeur ID :
+                            ${driverId}
+                        </span>
+
+                        <br />
+
+                        <span>
+                            Statut :
+                            ${statusText}
+                        </span>
+
+                        <br />
+
+                        <span>
+                            Vitesse :
+                            ${speedText}
+                        </span>
+
+                        <br />
+
+                        <small>
+                            GPS :
+                            ${lat.toFixed(6)},
+                            ${lon.toFixed(6)}
+                        </small>
+
+                    </div>
+                    `
+                );
+
+            return;
         }
 
-        async function drawRoute(lat1, lon1, lat2, lon2) {
-            if (!map) return;
+        // ========================================================
+        // NOUVEAU VEHICULE
+        // ========================================================
 
-            try {
-                const url = `${OSRM_URL}/${lon1},${lat1};${lon2},${lat2}?overview=full&geometries=geojson`;
-                const response = await fetch(url);
-                const data = await response.json();
+        const marker =
+            L.marker(
+                [
+                    lat,
+                    lon
+                ],
+                {
+                    icon:
+                        vehicleIcon(
+                            isAvailable
+                        )
+                }
+            ).addTo(map);
 
-                if (!data.routes || data.routes.length === 0) {
-                    console.log("OSRM : aucun itineraire trouve.");
+        marker.bindPopup(
+            `
+            <div style="min-width:180px">
+
+                <strong>
+                    🛺 ${numberText}
+                </strong>
+
+                <br />
+
+                <span>
+                    Chauffeur ID :
+                    ${driverId}
+                </span>
+
+                <br />
+
+                <span>
+                    Statut :
+                    ${statusText}
+                </span>
+
+                <br />
+
+                <small>
+                    GPS :
+                    ${lat.toFixed(6)},
+                    ${lon.toFixed(6)}
+                </small>
+
+            </div>
+            `
+        );
+
+        vehicleMarkers[key] =
+            marker;
+
+        console.log(
+            "MAP : véhicule ajouté :",
+            driverId,
+            lat,
+            lon
+        );
+    }
+
+    // ============================================================
+    // AFFICHER TOUTE LA FLOTTE
+    // ============================================================
+
+    function setVehicles(
+        vehicles
+    ) {
+
+        if (!map) {
+
+            console.log(
+                "MAP : setVehicles appelée avant initialisation."
+            );
+
+            return;
+        }
+
+        if (!Array.isArray(vehicles)) {
+
+            console.log(
+                "MAP : liste véhicules invalide :",
+                vehicles
+            );
+
+            return;
+        }
+
+        console.log(
+            "MAP : réception de " +
+            vehicles.length +
+            " véhicules."
+        );
+
+        const activeIds = [];
+
+        // ========================================================
+        // PARCOURIR LA FLOTTE
+        // ========================================================
+
+        vehicles.forEach(
+            vehicle => {
+
+                if (!vehicle)
+                    return;
+
+                // ------------------------------------------------
+                // DRIVER ID
+                // ------------------------------------------------
+
+                const driverId =
+                    vehicle.driverId ??
+                    vehicle.DriverId;
+
+                // ------------------------------------------------
+                // POSITION
+                // ------------------------------------------------
+
+                const latitude =
+                    vehicle.latitude ??
+                    vehicle.Latitude;
+
+                const longitude =
+                    vehicle.longitude ??
+                    vehicle.Longitude;
+                const speed =
+                    vehicle.speed ??
+                    vehicle.Speed ??
+                    0;
+
+                // ------------------------------------------------
+                // NUMERO VEHICULE
+                // ------------------------------------------------
+
+                const vehicleNumber =
+                    vehicle.vehicleNumber ??
+                    vehicle.VehicleNumber ??
+                    "";
+
+                // ------------------------------------------------
+                // DISPONIBILITE
+                // ------------------------------------------------
+
+                const isAvailable =
+                    vehicle.isAvailable ??
+                    vehicle.IsAvailable ??
+                    false;
+
+                console.log(
+                    "MAP VEHICULE :",
+                    {
+                        driverId,
+                        latitude,
+                        longitude,
+                        vehicleNumber,
+                        isAvailable
+                    }
+                );
+
+                if (
+                    driverId === null ||
+                    driverId === undefined
+                ) {
+
                     return;
                 }
 
-                const coords = data.routes[0].geometry.coordinates.map(c => [c[1], c[0]]);
+                activeIds.push(
+                    String(driverId)
+                );
 
-                if (routeLine) map.removeLayer(routeLine);
-                routeLine = L.polyline(coords, { color: "#00A86B", weight: 5, opacity: 0.85 }).addTo(map);
+                // ------------------------------------------------
+                // AFFICHER
+                // ------------------------------------------------
 
-                map.fitBounds(routeLine.getBounds(), { padding: [60, 60] });
-            } catch (err) {
-                console.log("ERREUR OSRM : " + err);
+                setVehicle(
+                    driverId,
+                    latitude,
+                    longitude,
+                    vehicleNumber,
+                    isAvailable,
+                    speed
+                );
             }
+        );
+
+        // ========================================================
+        // SUPPRIMER VEHICULES ABSENTS DE LA NOUVELLE LISTE
+        // ========================================================
+
+        Object.keys(
+            vehicleMarkers
+        ).forEach(
+            driverId => {
+
+                if (
+                    !activeIds.includes(
+                        String(driverId)
+                    )
+                ) {
+
+                    map.removeLayer(
+                        vehicleMarkers[
+                            driverId
+                        ]
+                    );
+
+                    delete
+                        vehicleMarkers[
+                            driverId
+                        ];
+                }
+            }
+        );
+
+        console.log(
+            "MAP : véhicules affichés = " +
+            Object.keys(
+                vehicleMarkers
+            ).length
+        );
+    }
+
+    // ============================================================
+    // SUPPRIMER TOUS LES VEHICULES
+    // ============================================================
+
+    function clearVehicles() {
+
+        if (!map)
+            return;
+
+        Object.keys(
+            vehicleMarkers
+        ).forEach(
+            driverId => {
+
+                map.removeLayer(
+                    vehicleMarkers[
+                        driverId
+                    ]
+                );
+            }
+        );
+
+        vehicleMarkers = {};
+
+        console.log(
+            "MAP : tous les véhicules supprimés."
+        );
+    }
+
+    // ============================================================
+    // CENTRER SUR UN VEHICULE
+    // ============================================================
+
+    function centerOnVehicle(
+        driverId
+    ) {
+
+        if (!map)
+            return;
+
+        const key =
+            String(driverId);
+
+        const marker =
+            vehicleMarkers[key];
+
+        if (!marker) {
+
+            console.log(
+                "MAP : véhicule introuvable :",
+                driverId
+            );
+
+            return;
         }
 
-        function clearRoute() {
+        map.setView(
+            marker.getLatLng(),
+            16
+        );
+
+        marker.openPopup();
+    }
+
+    // ============================================================
+    // CENTRER CARTE
+    // ============================================================
+
+    function centerMap(
+        lat,
+        lon,
+        zoom
+    ) {
+
+        if (!map)
+            return;
+
+        const latitude =
+            Number(lat);
+
+        const longitude =
+            Number(lon);
+
+        if (
+            !Number.isFinite(latitude) ||
+            !Number.isFinite(longitude)
+        )
+            return;
+
+        map.setView(
+            [
+                latitude,
+                longitude
+            ],
+            zoom || 15
+        );
+
+        map.invalidateSize();
+    }
+
+    // ============================================================
+    // MARQUEUR CLIENT
+    // ============================================================
+
+    function setClientMarker(
+        lat,
+        lon
+    ) {
+
+        if (!map)
+            return;
+
+        const latitude =
+            Number(lat);
+
+        const longitude =
+            Number(lon);
+
+        if (
+            !Number.isFinite(latitude) ||
+            !Number.isFinite(longitude)
+        )
+            return;
+
+        if (clientMarker) {
+
+            clientMarker.setLatLng(
+                [
+                    latitude,
+                    longitude
+                ]
+            );
+
+        }
+        else {
+
+            clientMarker =
+                L.marker(
+                    [
+                        latitude,
+                        longitude
+                    ],
+                    {
+                        icon:
+                            blueDotIcon
+                    }
+                ).addTo(map);
+        }
+    }
+
+    // ============================================================
+    // DESTINATION
+    // ============================================================
+
+    function setDestinationMarker(
+        lat,
+        lon
+    ) {
+
+        if (!map)
+            return;
+
+        const latitude =
+            Number(lat);
+
+        const longitude =
+            Number(lon);
+
+        if (
+            !Number.isFinite(latitude) ||
+            !Number.isFinite(longitude)
+        )
+            return;
+
+        if (destinationMarker) {
+
+            map.removeLayer(
+                destinationMarker
+            );
+        }
+
+        destinationMarker =
+            L.marker(
+                [
+                    latitude,
+                    longitude
+                ]
+            ).addTo(map);
+    }
+
+    // ============================================================
+    // ROUTE
+    // ============================================================
+
+    async function drawRoute(
+        lat1,
+        lon1,
+        lat2,
+        lon2
+    ) {
+
+        if (!map)
+            return;
+
+        try {
+
+            const url =
+                `https://router.project-osrm.org/route/v1/driving/` +
+                `${lon1},${lat1};${lon2},${lat2}` +
+                `?overview=full&geometries=geojson`;
+
+            const response =
+                await fetch(url);
+
+            const data =
+                await response.json();
+
+            if (
+                !data.routes ||
+                data.routes.length === 0
+            ) {
+
+                console.log(
+                    "OSRM : aucun itinéraire."
+                );
+
+                return;
+            }
+
+            const coords =
+                data.routes[0]
+                    .geometry
+                    .coordinates
+                    .map(
+                        c =>
+                            [
+                                c[1],
+                                c[0]
+                            ]
+                    );
+
             if (routeLine) {
-                map.removeLayer(routeLine);
-                routeLine = null;
+
+                map.removeLayer(
+                    routeLine
+                );
             }
+
+            routeLine =
+                L.polyline(
+                    coords,
+                    {
+                        color:
+                            "#00A86B",
+
+                        weight:
+                            5,
+
+                        opacity:
+                            0.85
+                    }
+                ).addTo(map);
+
+            map.fitBounds(
+                routeLine.getBounds(),
+                {
+                    padding:
+                        [
+                            60,
+                            60
+                        ]
+                }
+            );
+
+        }
+        catch (err) {
+
+            console.log(
+                "ERREUR OSRM :",
+                err
+            );
+        }
+    }
+
+    // ============================================================
+    // CLEAR ROUTE
+    // ============================================================
+
+    function clearRoute() {
+
+        if (routeLine) {
+
+            map.removeLayer(
+                routeLine
+            );
+
+            routeLine =
+                null;
+        }
+    }
+
+    // ============================================================
+    // CLEAR DESTINATION
+    // ============================================================
+
+    function clearDestinationMarker() {
+
+        if (destinationMarker) {
+
+            map.removeLayer(
+                destinationMarker
+            );
+
+            destinationMarker =
+                null;
         }
 
-        // Une seule initialisation, declenchee au chargement de la page
-        window.addEventListener("load", initMap);
-    </script>
+        clearRoute();
+    }
+
+    // ============================================================
+    // INITIALISATION UNIQUE
+    // ============================================================
+
+    window.addEventListener(
+        "load",
+        initMap
+    );
+
+</script>
+
 </body>
 </html>

@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="utf-8" ?>
+
+<ContentPage
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    x:Class="MoraTuk.Mobile.Pages.OwnerHomePage"
+    Title="Propriétaire">
+
+    <Grid>
+
+        <!-- CARTE -->
+        <WebView
+            x:Name="MapWebView"
+            HorizontalOptions="Fill"
+            VerticalOptions="Fill" />
+
+        <!-- INFORMATIONS -->
+        <Border
+            Margin="15"
+            Padding="15"
+            BackgroundColor="White"
+            StrokeThickness="0"
+            HorizontalOptions="Start"
+            VerticalOptions="Start">
+
+            <Border.StrokeShape>
+                <RoundRectangle CornerRadius="12" />
+            </Border.StrokeShape>
+
+            <VerticalStackLayout Spacing="5">
+
+                <Label
+                    Text="🛺 ZOTRANAKA"
+                    FontSize="20"
+                    FontAttributes="Bold"
+                    TextColor="#00A86B" />
+
+                <Label
+                    Text="Suivi de la flotte"
+                    FontSize="16"
+                    FontAttributes="Bold"
+                    TextColor="#333333" />
+
+                <Label
+                    x:Name="FleetCountLabel"
+                    Text="Chargement..."
+                    FontSize="14"
+                    TextColor="Gray" />
+
+            </VerticalStackLayout>
+
+        </Border>
+
+        <!-- ACTUALISER -->
+        <Button
+            Text="⟳"
+            FontSize="25"
+            WidthRequest="55"
+            HeightRequest="55"
+            CornerRadius="28"
+            Margin="15"
+            BackgroundColor="White"
+            TextColor="Black"
+            HorizontalOptions="End"
+            VerticalOptions="End"
+            Clicked="RefreshButton_Clicked" />
+
+        <!-- CHARGEMENT -->
+        <Grid
+            x:Name="LoadingOverlay"
+            BackgroundColor="#80000000"
+            IsVisible="False">
+
+            <ActivityIndicator
+                IsRunning="True"
+                Color="White"
+                WidthRequest="50"
+                HeightRequest="50"
+                HorizontalOptions="Center"
+                VerticalOptions="Center" />
+
+        </Grid>
+
+    </Grid>
+
+</ContentPage>
